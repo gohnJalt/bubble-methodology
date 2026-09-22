@@ -41,7 +41,7 @@ app works normally.
 | `draft/` | the original notebook this was ported from |
 
 ## Findings
-Raw tables for both studies are in `results/`.
+Raw tables for both window and filter studies are in `results/`.
 
 Every module runs its own self-check: `.venv/bin/python <bubble|overlay|data|evaluate|filters>.py`.
 
