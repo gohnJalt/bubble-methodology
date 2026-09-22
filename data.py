@@ -26,6 +26,16 @@ def _load_env(path=os.path.join(HERE, ".env")):
             os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
     except FileNotFoundError:
         pass
+    # Streamlit Community Cloud has no .env file -- keys are entered in the app's
+    # Secrets box and surface through st.secrets. Soft import so the CLI entry
+    # points (evaluate.py, filters.py, data.py) keep working outside Streamlit.
+    try:
+        import streamlit as st
+        for k, v in st.secrets.items():
+            if isinstance(v, str):
+                os.environ.setdefault(k, v)
+    except Exception:
+        pass
 
 
 _load_env()
