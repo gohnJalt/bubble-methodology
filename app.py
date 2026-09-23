@@ -44,8 +44,15 @@ def last_z(m):
 
 
 def prov(m):
-    """True when the last month is still provisional: partial month, carried CPI, or both."""
-    return bool(m["df"]["prov"].iloc[-1])
+    """True when the last month is still provisional: partial month, carried CPI, or both.
+
+    Tolerates a frame without the column. st.cache_data keys on this module's own
+    code, not on data.load's, so right after a deploy it can still serve a frame
+    built by the previous version -- and an absent label must not take the page
+    down. The ttl expires it within the hour; a reboot clears it at once.
+    """
+    col = m["df"].get("prov")
+    return bool(col.iloc[-1]) if col is not None and len(col) else False
 
 
 def last_ov(m):
