@@ -6,6 +6,8 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
+CARRY_MAX = 3   # months the last published CPI may be carried forward (see price_index)
+
 
 def price_index(price, cpi, warn=True):
     """
@@ -14,8 +16,24 @@ def price_index(price, cpi, warn=True):
     price (df/series): daily nominal price.
     cpi   (df/series): CPI, stamped at month start (FRED CPIAUCSL convention).
 
-    Returns a frame indexed by month end with columns nom, cpi, real, p (= log real).
-    The index is contiguous monthly, which trend_z relies on.
+    Returns a frame indexed by month end with columns nom, cpi, real, p (= log real)
+    and prov. The index is contiguous monthly, which trend_z relies on.
+
+    The series runs to the current month. CPI publishes a month or two behind price,
+    and the current month is still trading, so the last row or two are PROVISIONAL and
+    `prov` marks them:
+
+    - CPI past its last published month is carried forward, up to CARRY_MAX months.
+      Those months are deflated as if inflation were zero, which overstates real price
+      by exactly the inflation that has not printed yet -- negligible at 2%/yr, not
+      negligible in Turkey. Past CARRY_MAX the month is dropped instead: a dead CPI
+      feed must not quietly turn a nominal rally into a real one (London's FRED CPI
+      died in 2025-03, so this is an observed failure mode, not a hypothetical).
+    - The current month's mean is a partial month, over however many sessions have
+      traded so far. It is a noisier estimate of the same quantity, not a different
+      one, and it uses no information from after month t.
+
+    Nothing here looks ahead: every value was computable at the month it is stamped on.
 
     CPI base year is irrelevant: a constant scale on cpi is an additive constant
     on p, which trend_z detrends away. Do not renormalise bases across markets.
@@ -23,26 +41,29 @@ def price_index(price, cpi, warn=True):
     price, cpi = price.squeeze(), cpi.squeeze()
 
     px = price.resample('ME').agg("mean")
-    if price.index.max() < px.index.max():
-        px = px.iloc[:-1]          # last month incomplete -> its mean is a partial month
+    partial = price.index.max() < px.index.max()   # the current month is still running
     cp = cpi.resample('ME').last()
 
     months = pd.period_range(max(px.index.min(), cp.index.min()).to_period('M'),
-                             min(px.index.max(), cp.index.max()).to_period('M'),
+                             px.index.max().to_period('M'),
                              freq='M').to_timestamp('M')
     px, cp = px.reindex(months), cp.reindex(months)
 
-    holes = cp.index[cp.isna()]
-    if len(holes):
-        # Oct-2025 is genuinely absent from CPIAUCSL (never published). Dropping it
-        # would silently shorten the time axis every rolling window sees, so fill it.
-        if warn:
-            print("CPI missing:", ", ".join(holes.strftime('%Y-%m')), "-> interpolated")
-        cp = cp.interpolate(limit_area='inside')
+    # Oct-2025 is genuinely absent from CPIAUCSL (never published). Dropping an interior
+    # hole would silently shorten the time axis every rolling window sees, so fill it.
+    filled = cp.interpolate(limit_area='inside')
+    holes = cp.index[cp.isna() & filled.notna()]
+    if len(holes) and warn:
+        print("CPI missing:", ", ".join(holes.strftime('%Y-%m')), "-> interpolated")
+    tail = filled.isna()                           # price has printed, CPI has not yet
+    cp = filled.ffill(limit=CARRY_MAX)
 
     df = pd.concat([px.rename("nom"), cp.rename("cpi")], axis=1).dropna()
     df["real"] = df["nom"] / df["cpi"]
     df["p"] = np.log(df["real"])
+    df["prov"] = tail.reindex(df.index, fill_value=False)
+    if partial and len(df):
+        df.loc[df.index[-1], "prov"] = True
     return df
 
 
@@ -165,6 +186,27 @@ def _selfcheck():
     holed = cpi.copy()
     holed.iloc[200] = np.nan
     assert len(price_index(px, holed, warn=False)) == len(a)
+
+    # CPI lagging price: the index still runs to the last priced month, the carried
+    # months are flagged, and the carry is bounded so a dead feed cannot run forever.
+    # cpi2 ends exactly where px does, so trimming it creates a real publication lag.
+    pm = pd.period_range("1990-01", px.index.max().to_period("M"), freq="M")
+    cpi2 = pd.Series(np.linspace(100, 300, len(pm)), index=pm.to_timestamp())
+    base = price_index(px, cpi2, warn=False)
+    lag2 = price_index(px, cpi2.iloc[:-2], warn=False)
+    assert lag2.index.max() == base.index.max(), (lag2.index.max(), base.index.max())
+    assert len(lag2) == len(base)                             # no month lost to the lag
+    assert lag2["prov"].iloc[-2:].all() and not lag2["prov"].iloc[:-2].any()
+    assert (lag2["cpi"].iloc[-3:] == cpi2.iloc[-3]).all()     # last published, held flat
+    dead = price_index(px, cpi2.iloc[:-24], warn=False)
+    assert len(dead) == len(base) - 24 + CARRY_MAX, len(dead)  # dropped past the cap
+
+    # a still-running current month is kept and flagged, not silently dropped
+    cut = px.index[px.index.to_period("M") == pm[-3]][8]      # mid-month cutoff
+    lv = price_index(px.loc[:cut], cpi2, warn=False)
+    assert lv.index.max().to_period("M") == pm[-3], lv.index.max()
+    assert bool(lv["prov"].iloc[-1]) and not lv["prov"].iloc[:-1].any()
+    assert np.isclose(lv["nom"].iloc[-1], px.loc[pm[-3].start_time:cut].mean())
 
     print("bubble.py selfcheck ok")
 

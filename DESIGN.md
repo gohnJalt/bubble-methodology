@@ -46,10 +46,16 @@ Port unchanged from notebook cell 3. Recap of what it does and why:
 
 1. Resample daily nominal close to month-end mean (`'ME'`, `.mean()`). Mean, not
    last — a single day's close is noise; the month's mean is the month's level.
-2. Drop the final month if the price series ends mid-month (its mean would be a
-   partial month, biased by whatever happened in the first half).
+2. Keep the final month even when the price series ends mid-month, and mark it
+   `prov`. Its mean is a partial month, which is a noisier estimate of the same
+   quantity rather than a different one — and it is what makes the index current.
+   The UI labels every `prov` month rather than presenting it as settled.
 3. Resample CPI to month-end (`.last()`; FRED stamps CPI on the 1st).
-4. Reindex both onto a **contiguous** monthly `period_range` over the overlap.
+4. Reindex both onto a **contiguous** monthly `period_range` running to the last
+   priced month. CPI publishes behind price, so its last published value is carried
+   forward over the shortfall, capped at `bubble.CARRY_MAX` (3) months; past the cap
+   the month is dropped, because a dead CPI feed would otherwise turn a nominal
+   rally into a real one. Carried months are marked `prov` too.
    Contiguity is load-bearing — `trend_z` uses `sliding_window_view` over a raw
    numpy array and has no notion of dates; a gap silently corrupts the time axis.
 5. Interpolate interior CPI holes (`limit_area='inside'`) and log which months

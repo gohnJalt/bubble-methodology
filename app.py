@@ -43,6 +43,11 @@ def last_z(m):
     return float(z.iloc[-1]) if len(z) and np.isfinite(z.iloc[-1]) else float("nan")
 
 
+def prov(m):
+    """True when the last month is still provisional: partial month, carried CPI, or both."""
+    return bool(m["df"]["prov"].iloc[-1])
+
+
 def last_ov(m):
     ov = m["overlay"].dropna()
     return float(ov.iloc[-1]) if len(ov) else float("nan")
@@ -175,7 +180,8 @@ def page_overview(window):
             f'<div class="z-sub">vs {crit:.2f}</div></div>'
             f'<div>{theme.pill(state)}<div class="meta" style="margin-top:.4rem">{ovtxt}</div></div>'
             f'<div>{theme.sparkline(spark, crit)}'
-            f'<div class="z-sub" style="margin-top:.3rem">to {m["df"].index.max():%b %Y}</div></div>'
+            f'<div class="z-sub" style="margin-top:.3rem">to {m["df"].index.max():%b %Y}'
+            f'{" &middot; provisional" if prov(m) else ""}</div></div>'
             '</div>')
     body.append("</div>")
     html("".join(body))
@@ -233,7 +239,7 @@ def page_market(key, window):
               else f'<span class="v" style="color:{theme.INK3}">&mdash;</span>',
               overlay.band(ov) if ov == ov else "not available"),
              ("data through", f'<span class="v">{m["df"].index.max():%b %Y}</span>',
-              f'readings from {m["tz"].index.min():%Y}')]
+              ("provisional" if prov(m) else f'readings from {m["tz"].index.min():%Y}'))]
     for col, (k, v, sub) in zip(st.columns(4), cells):
         with col:
             html(f'<div class="card stat"><span class="k">{k}</span>{v}'
@@ -299,6 +305,24 @@ that window's degrees of freedom: 2.32 at W=12, 2.01 at W=360. A flat 2.0 would 
 a looser test on short windows.
 6. **State.** *Bubble* when z exceeds the threshold, *elevated* within 1 of it,
 otherwise *normal*.
+
+## The last reading is provisional
+
+The series runs to the current month, so the newest reading is marked
+**provisional** and will move:
+
+- **The month is still trading.** Its level is the mean of the sessions so far, not
+of the whole month. Same quantity, noisier estimate.
+- **CPI publishes a month or two behind price.** Until it prints, the last published
+CPI is carried forward, which deflates those months as if inflation were zero. That
+overstates real price by exactly the inflation that has not been reported yet —
+immaterial at 2% a year, material in Turkey. The carry stops after three months and
+the month is dropped instead, so a dead CPI feed cannot quietly turn a nominal rally
+into a real one.
+
+Neither uses information from after the month it is stamped on, so the no-look-ahead
+rule still holds. A provisional month can cross the threshold and then uncross it
+when the real CPI lands.
 
 ## Window lengths
 
