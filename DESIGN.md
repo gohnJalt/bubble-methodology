@@ -154,7 +154,7 @@ looser / more bubble-supportive**:
 Each component is z-scored against its **own trailing 10-year window** (120m,
 expanding until 120 observations exist, `NaN` before 60). Overlay score is the
 **mean of available component z-scores** — components missing for a market simply
-drop out of the mean, and the UI states how many of three are present. Do not
+drop out of the mean. Do not
 impute a missing macro series with zero; a missing series is missing, not neutral.
 
 Presented as a −3..+3 dial with a 24-month history sparkline. Bands: `< −1` tight,
@@ -293,10 +293,14 @@ read-only FastAPI endpoint bolts on later — do not build it now.
 
 Four cards, one per market, each showing:
 
-- Market name, index, **current state** (`BUBBLE` / `elevated` / `normal`), colour
+- **Index name** — the index is the market's label throughout the UI; the city
+  (New York / London / Asia / Turkey) is an internal registry key only. Plus
+  currency and **current state** (`BUBBLE` / `elevated` / `normal`), colour
   coded. `elevated` = z within 1 of the threshold.
 - Current `z` to 2dp, and the threshold it is being tested against.
-- Macro overlay dial (−3..+3) with its component count ("2 of 3").
+- Macro overlay band and score (−3..+3). The component count is not shown: it is
+  a property of the data sources, not a reading, and it competed with the score
+  for the same glance.
 - A small sparkline of z over the last 10 years with the threshold line.
 - "Data as of <month>" — and the stale-data banner if the refresh failed.
 

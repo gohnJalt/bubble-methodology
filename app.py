@@ -151,16 +151,14 @@ def page_overview(window):
             loaded[key] = m
 
     body = ['<div class="rail"><div class="rail-head">'
-            '<span>Market</span><span>Window</span><span>z</span>'
-            '<span>Macro</span><span>z, last 10 years</span></div>']
+            '<span>Index</span><span>Window</span><span>z</span>'
+            '<span>State &middot; macro</span><span>z, last 10 years</span></div>']
     for key, m in loaded.items():
         z, crit = last_z(m), m["crit"]
         state = data.state(z, crit)
         ov = last_ov(m)
         if ov == ov:
-            ovtxt = (f'<b>{overlay.band(ov)}</b> <span class="num">{ov:+.2f}</span>'
-                     f'<br><span style="color:{theme.INK3};font-size:.75rem">'
-                     f'{len(m["comps"])} of 3 inputs</span>')
+            ovtxt = f'<b>{overlay.band(ov)}</b> <span class="num">{ov:+.2f}</span>'
         else:
             ovtxt = f'<span style="color:{theme.INK3}">not available</span>'
         zc = theme.STATE[state][0] if state != "normal" else theme.INK
@@ -171,7 +169,7 @@ def page_overview(window):
                 if m.get("weak") or m.get("start") else "")
         body.append(
             '<div class="row">'
-            f'<div class="mk">{m["name"]}<small>{m["index"]} &middot; {m["ccy"]}{warn}</small></div>'
+            f'<div class="mk">{m["index"]}<small>{m["ccy"]}{warn}</small></div>'
             f'<div class="num meta">{m["window"] // 12}y</div>'
             f'<div><div class="z" style="color:{zc}">{z:+.2f}</div>'
             f'<div class="z-sub">vs {crit:.2f}</div></div>'
@@ -183,7 +181,7 @@ def page_overview(window):
     html("".join(body))
 
     for key, err in errs:
-        html(f'<div class="err" style="margin-top:.8rem"><b>{data.MARKETS[key]["name"]}'
+        html(f'<div class="err" style="margin-top:.8rem"><b>{data.MARKETS[key]["index"]}'
              f'</b> could not be loaded &mdash; {err}</div>')
 
     if len(loaded) > 1:
@@ -193,7 +191,7 @@ def page_overview(window):
              'axis; their thresholds differ only in the second decimal.</p>')
         f = go.Figure()
         for m in loaded.values():
-            f.add_scatter(x=m["tz"].index, y=m["tz"]["z"], name=m["name"],
+            f.add_scatter(x=m["tz"].index, y=m["tz"]["z"], name=m["index"],
                           line=dict(width=1.15), opacity=.85,
                           hovertemplate="%{y:.2f}")
         f.update_layout(colorway=[M["price"], M["z"], M["band"], M["bubble"]])
@@ -211,7 +209,7 @@ def page_overview(window):
 def page_market(key, window):
     m, err = get(key, window)
     if err:
-        html(f'<h1>{data.MARKETS[key]["name"]}</h1>'
+        html(f'<h1>{data.MARKETS[key]["index"]}</h1>'
              f'<div class="err" style="margin-top:1rem">Could not be loaded &mdash; {err}</div>')
         return
     z, crit = last_z(m), m["crit"]
@@ -219,8 +217,8 @@ def page_market(key, window):
     ov = last_ov(m)
 
     span = (f' &middot; history from {m["start"][:4]}' if m.get("start") else "")
-    html(f'<h1>{m["name"]}</h1><p class="lede">{m["index"]} &middot; real {m["ccy"]}, '
-         f'CPI-deflated &middot; {m["window"] // 12}-year rolling trend{span}</p>')
+    html(f'<h1>{m["index"]}</h1><p class="lede">Real {m["ccy"]}, CPI-deflated '
+         f'&middot; {m["window"] // 12}-year rolling trend{span}</p>')
     stale_banner()
     if m.get("note"):
         html(f'<div class="warn" style="margin-top:.9rem">{m["note"]} '
@@ -230,8 +228,10 @@ def page_market(key, window):
     cells = [("state", theme.pill(state), f"z {'above' if z > crit else 'below'} threshold"),
              ("z", f'<span class="v" style="color:{zc}">{z:+.2f}</span>',
               f"threshold {crit:.2f}"),
-             ("macro overlay", f'<span class="v">{overlay.band(ov)}</span>',
-              f"{ov:+.2f} &middot; {len(m['comps'])} of 3" if ov == ov else "not available"),
+             ("macro overlay",
+              f'<span class="v">{ov:+.2f}</span>' if ov == ov
+              else f'<span class="v" style="color:{theme.INK3}">&mdash;</span>',
+              overlay.band(ov) if ov == ov else "not available"),
              ("data through", f'<span class="v">{m["df"].index.max():%b %Y}</span>',
               f'readings from {m["tz"].index.min():%Y}')]
     for col, (k, v, sub) in zip(st.columns(4), cells):
@@ -302,14 +302,14 @@ otherwise *normal*.
 
 ## Window lengths
 
-New York reads at a 7-year window, the other three at 10 years. These were chosen
+The Nasdaq Composite reads at a 7-year window, the other three at 10 years. These were chosen
 against criteria fixed before any results were read, led by a threshold-free
 measure: the rank correlation between z and subsequent real returns. The study is
 in `WINDOW-STUDY.md`.
 
 The original 20-year default was dropped. On the Nasdaq it was wrong-signed while
-flagging 14.5% of months — 6.4× the rate its own threshold claims — and on London
-and Turkey it never fired at all.
+flagging 14.5% of months — 6.4× the rate its own threshold claims — and on the
+FTSE 100 and BIST 100 it never fired at all.
 
 ## The macro overlay
 
@@ -356,7 +356,7 @@ This model measures statistical deviation from trend. It does not forecast retur
 # ---------------------------------------------------------------- shell
 with st.sidebar:
     html('<div class="eyebrow" style="margin-bottom:.9rem">Bubble Methodology</div>')
-    pages = ["Overview"] + [m["name"] for m in data.MARKETS.values()] + ["Methodology"]
+    pages = ["Overview"] + [m["index"] for m in data.MARKETS.values()] + ["Methodology"]
     choice = st.radio("View", pages, label_visibility="collapsed")
     html("<div style='height:1.5rem'></div>")
     picked = st.select_slider(
@@ -365,7 +365,7 @@ with st.sidebar:
         else (f"{w // 12}y" if w >= 12 else f"{w}m"))
     window = None if picked == "default" else picked
     if window is None:
-        html('<p class="note" style="margin-top:.55rem">New York <b>7y</b>, others '
+        html('<p class="note" style="margin-top:.55rem">Nasdaq <b>7y</b>, others '
              '<b>10y</b> &mdash; chosen in WINDOW-STUDY.md.</p>')
     else:
         unit = f"{window // 12}y" if window >= 12 else f"{window}m"
@@ -377,4 +377,4 @@ if choice == "Overview":
 elif choice == "Methodology":
     page_method()
 else:
-    page_market(next(k for k, v in data.MARKETS.items() if v["name"] == choice), window)
+    page_market(next(k for k, v in data.MARKETS.items() if v["index"] == choice), window)
