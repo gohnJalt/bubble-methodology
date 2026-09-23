@@ -225,7 +225,7 @@ def series(spec):
 
 # --- registry: adding a market is an entry here, not a code change -------------
 # macro components are oriented in overlay.py, not here.
-# `window` is that market's default trend window, chosen in WINDOW-STUDY.md.
+# `window` is that market's default trend window, chosen in results/window_study.csv.
 MARKETS = {
     "new_york": dict(name="New York", index="Nasdaq Composite", ticker="^IXIC",
                      ccy="USD", cpi="fred:CPIAUCSL", window=84,
@@ -238,7 +238,7 @@ MARKETS = {
                                 credit=None)),   # no live monthly UK credit series found
     # e-Stat CPI 2020-base: tab=1 index, cat01=0001 all items, area=00000 all Japan
     # start: the 1970-89 re-rating runs the wrong way for two decades and drags the
-    # full-sample signal wrong-signed (FILTER-STUDY.md section 3). Restricted to 1990+,
+    # full-sample signal wrong-signed (results/asia_eras.csv). Restricted to 1990+,
     # which is a decision made AFTER seeing that result -- so the UI says so.
     "asia":     dict(name="Asia", index="Nikkei 225", ticker="^N225",
                      ccy="JPY", window=120, start="1990-01",
@@ -267,7 +267,7 @@ MARKETS = {
 def load(key, window=None):
     """Everything the UI needs for one market. Raises only if the market is unusable.
 
-    window=None uses that market's own default (WINDOW-STUDY.md): 84m for New
+    window=None uses that market's own default (results/window_study.csv): 84m for New
     York, 120m elsewhere. 240m was the original default and is not defensible --
     on Nasdaq it is wrong-signed and fires 6.4x its nominal rate, on London and
     Turkey it never fires at all.

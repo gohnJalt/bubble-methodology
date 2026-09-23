@@ -195,7 +195,7 @@ def _rho(key, w, h, mask=None, start=None):
 
 
 def dump_all(frames):
-    """Every table behind WINDOW-STUDY.md, regenerated from source."""
+    """Every table in results/, regenerated from source."""
     os.makedirs(OUT, exist_ok=True)
     def save(df, name, r=3):
         df.round(r).to_csv(os.path.join(OUT, name))

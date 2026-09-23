@@ -92,7 +92,7 @@ never hardcode 2.0. Ranges from 2.32 (w=12) to 2.01 (w=360).
 (`bub & ~bub.shift(1)`). Entries are what the UI marks and lists, not every
 individual bubble month — a 30-month episode is one event, not 30.
 
-### 2.5 Window choice — settled, see WINDOW-STUDY.md
+### 2.5 Window choice — settled; tables in `results/window_study.csv`
 
 **Per-market defaults: New York 84m, London / Asia / Turkey 120m.** Set as
 `window` in the `data.MARKETS` registry. The UI still exposes
@@ -116,7 +116,7 @@ revisited, re-run `evaluate.py` and argue from its tables.
 
 **Asia is restricted to 1990 onward and is still the weakest market.** The
 Nikkei's 1970-89 secular re-rating made z wrong-signed over the full sample
-(WINDOW-STUDY.md §5, FILTER-STUDY.md §3), so `MARKETS["asia"]["start"]` cuts the
+(`results/window_study.csv`, `results/asia_eras.csv`), so `MARKETS["asia"]["start"]` cuts the
 history at 1990-01.
 
 The cut is applied in `data.load` **before** `bubble.score`, deliberately: a
@@ -165,7 +165,7 @@ Open, deliberately deferred: no backtest of whether the overlay adds predictive
 power. It is a context panel, and it is labelled as one. If it is ever promoted
 to a signal that changes decisions, it needs validation first.
 
-### 2.7 Filters — tested and rejected, see FILTER-STUDY.md
+### 2.7 Filters — tested and rejected; tables in `results/filter_study.csv`
 
 Trailing moving averages (3/6/12m) and a **one-sided** HP filter (lambda =
 1600/14400/129600) were tested on all four markets as both a smoother and a
@@ -401,8 +401,8 @@ page is wrong.
 
 - `evaluate.py` -> `results/` — window study: calibration, rank information by
   horizon, subsample and split-half stability, common-period comparison, Asia era
-  breakdown, conditional returns and drawdowns. Report: **WINDOW-STUDY.md**.
-- `filters.py` -> `results/filter_*.csv` — filter study. Report: **FILTER-STUDY.md**.
+  breakdown, conditional returns and drawdowns.
+- `filters.py` -> `results/filter_*.csv` — filter study.
 
 Both regenerate every table from source; the reports quote them, nothing is
 transcribed by hand. Re-run both after any change to the methodology or the data
