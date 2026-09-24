@@ -1,9 +1,0 @@
-services:
-  app:
-    build: .
-    ports: ["8501:8501"]
-    env_file: [.env]          # EVDS_API_KEY, ESTAT_APP_ID (FRED/ONS need none)
-    volumes: ["cache:/app/data/cache"]
-    restart: unless-stopped
-volumes:
-  cache:
