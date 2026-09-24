@@ -1,0 +1,7 @@
+// Static site on Cloudflare Workers (static assets only, no script). site/data.json
+// is produced by build.py; see .github/workflows/deploy.yml.
+{
+  "name": "bubble-methodology",
+  "compatibility_date": "2026-09-21",
+  "assets": { "directory": "./site" }
+}

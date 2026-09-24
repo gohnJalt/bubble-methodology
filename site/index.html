@@ -1,0 +1,525 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bubble Methodology</title>
+<meta name="description" content="Each market's CPI-deflated real equity index, measured against its own rolling trend. Nasdaq, FTSE 100, Nikkei 225, BIST 100.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpolyline points='1,12 5,9 8,10 11,4 15,6' fill='none' stroke='%23534AB7' stroke-width='2' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/plotly.js-cartesian-dist-min@4.1.1/plotly-cartesian.min.js" defer></script>
+<style>
+/* Operate surface. The instrument, not the brand: the reading should disappear into
+   the data. Mark palette inherited unchanged from the original notebook figures. */
+:root {
+  --ink:#1A1917; --ink2:#57534B; --ink3:#6B675E;
+  --canvas:#FBFAF8; --surface:#FFFFFF; --panel:#F4F2ED;
+  --line:#E5E1D8; --line2:#D5D0C4; --accent:#534AB7;
+  --alert:#B7332D; --warn:#8A5A0F; --ok:#136A4C;
+  --ui:'Inter', ui-sans-serif, system-ui, sans-serif;
+  --mono:'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
+}
+* { box-sizing:border-box; }
+html { -webkit-text-size-adjust:100%; }
+body { margin:0; background:var(--canvas); color:var(--ink); font:400 .9375rem/1.55 var(--ui);
+  -webkit-font-smoothing:antialiased; }
+
+/* browser surfaces */
+::selection { background:#534AB722; color:var(--ink); }
+* { scrollbar-width:thin; scrollbar-color:var(--line2) transparent; }
+::-webkit-scrollbar { width:10px; height:10px; }
+::-webkit-scrollbar-thumb { background:var(--line2); border-radius:6px; border:3px solid var(--canvas); }
+::-webkit-scrollbar-thumb:hover { background:var(--ink3); }
+:focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:3px; }
+a { color:var(--accent); text-underline-offset:3px; text-decoration-thickness:1px; }
+code { font-family:var(--mono); font-size:.85em; background:var(--panel); padding:.05rem .3rem; border-radius:4px; }
+
+/* shell */
+.shell { display:grid; grid-template-columns:232px minmax(0,1fr); min-height:100vh; }
+.side { background:var(--panel); border-right:1px solid var(--line); padding:1.6rem 1.1rem;
+  position:sticky; top:0; height:100vh; overflow:auto; display:flex; flex-direction:column; gap:1.6rem; }
+.brand { font-weight:600; font-size:.9375rem; color:var(--ink); text-decoration:none; letter-spacing:-.01em;
+  display:flex; align-items:center; gap:.5rem; padding:0 .55rem; }
+.brand svg { flex:none; }
+nav { display:flex; flex-direction:column; gap:.1rem; }
+nav a { color:var(--ink2); text-decoration:none; font-weight:500; font-size:.9rem;
+  padding:.36rem .55rem; border-radius:7px; transition:background 140ms ease, color 140ms ease; white-space:nowrap; }
+nav a:hover { background:#E8E5DE; color:var(--ink); }
+nav a[aria-current="page"] { background:var(--surface); color:var(--ink); box-shadow:0 1px 2px rgba(26,25,23,.06); }
+nav hr { border:0; height:1px; background:var(--line); margin:.45rem .55rem; }
+
+.win { border:0; margin:0; padding:0 .55rem; min-width:0; }
+.win legend, .th { font-size:.6875rem; font-weight:600; letter-spacing:.09em; text-transform:uppercase;
+  color:var(--ink3); padding:0; margin-bottom:.55rem; }
+.chips { display:grid; grid-template-columns:repeat(4,1fr); gap:.25rem; }
+.chips label { position:relative; }
+.chips input { position:absolute; opacity:0; inset:0; margin:0; cursor:pointer; }
+.chips span { display:block; text-align:center; font:500 .78rem/1 var(--mono); color:var(--ink2);
+  padding:.45rem 0; border:1px solid var(--line2); border-radius:6px; background:transparent;
+  transition:background 140ms ease, border-color 140ms ease, color 140ms ease; }
+.chips label.wide { grid-column:span 4; }
+.chips label.wide span { font-family:var(--ui); }
+.chips input:hover + span { background:#E8E5DE; }
+.chips input:checked + span { background:var(--ink); border-color:var(--ink); color:var(--canvas); }
+.chips input:focus-visible + span { outline:2px solid var(--accent); outline-offset:2px; }
+.side .note { padding:0 .55rem; margin:.6rem 0 0; }
+.built { margin-top:auto !important; color:var(--ink3) !important; font-size:.75rem !important; }
+
+main { padding:3.25rem 3rem 6rem; max-width:1180px; width:100%; }
+
+/* type */
+h1, h2, h3 { margin:0; letter-spacing:-.02em; text-wrap:balance; font-weight:600; }
+h1 { font-size:1.75rem; line-height:1.2; }
+h2 { font-size:1.1875rem; margin:3rem 0 .3rem; }
+h3 { font-size:.9375rem; margin:0 0 .15rem; }
+.lede { color:var(--ink2); max-width:68ch; margin:.55rem 0 0; }
+.num { font-family:var(--mono); font-variant-numeric:tabular-nums; letter-spacing:-.01em; }
+.note { font-size:.8125rem; color:var(--ink2); margin:.2rem 0 0; }
+.meta { font-size:.8125rem; color:var(--ink2); }
+.meta b { font-weight:600; color:var(--ink); }
+
+/* market rail: rows, not cards. comparison is the job. */
+.rail { margin-top:1.6rem; border:1px solid var(--line); border-radius:10px; background:var(--surface);
+  overflow:hidden; box-shadow:0 1px 2px rgba(26,25,23,.04), 0 8px 24px -16px rgba(26,25,23,.18); }
+.rail-head, .row { display:grid; grid-template-columns:1.6fr .62fr .72fr .78fr 190px;
+  gap:1rem; align-items:center; padding:.85rem 1.25rem; }
+.rail-head { padding-block:.7rem; background:#F4F2ED80; border-bottom:1px solid var(--line); }
+.rail-head .th { margin:0; }
+.row { border-top:1px solid var(--line); color:inherit; text-decoration:none; transition:background 160ms ease; }
+.rail-head + .row { border-top:none; }
+a.row:hover { background:#F4F2ED66; }
+.mk { font-weight:600; }
+.mk small { display:block; font-weight:400; color:var(--ink3); font-size:.8125rem; margin-top:.1rem; }
+.mk .flag { color:var(--warn); font-size:.75rem; }
+.z { font:500 1.375rem/1.2 var(--mono); font-variant-numeric:tabular-nums; letter-spacing:-.02em; }
+.z-sub { font-family:var(--mono); font-size:.6875rem; color:var(--ink3); margin-top:.15rem; }
+.row .err-inline { grid-column:2 / -1; color:#8E2B26; font-size:.8125rem; }
+
+/* state: a drawn mark plus the word. never colour alone. */
+.pill { display:inline-flex; align-items:center; gap:.42rem; padding:.2rem .55rem .2rem .45rem;
+  border-radius:999px; font-size:.75rem; font-weight:600; letter-spacing:.01em; white-space:nowrap; }
+.pill i { width:7px; height:7px; border-radius:50%; background:currentColor; flex:none; }
+.s-BUBBLE { color:var(--alert); background:#FBEDEC; }
+.s-elevated { color:var(--warn); background:#FBF3E4; }
+.s-normal { color:var(--ok); background:#EAF4EF; }
+.s-na { color:var(--ink3); background:#F1EFEA; }
+
+/* panels */
+.stats { display:grid; grid-template-columns:repeat(4,1fr); margin:1.6rem 0 1rem; border:1px solid var(--line);
+  border-radius:10px; background:var(--surface); }
+.stats > div { padding:1.05rem 1.25rem; display:flex; flex-direction:column; align-items:flex-start; gap:.3rem; }
+.stats > div + div { border-left:1px solid var(--line); }
+.stats .v { font:500 1.5rem/1.2 var(--mono); font-variant-numeric:tabular-nums; letter-spacing:-.02em; }
+.stats .th { margin:0; }
+.card { border:1px solid var(--line); border-radius:10px; background:var(--surface); padding:1.15rem 1.25rem; }
+.chart { border:1px solid var(--line); border-radius:10px; background:var(--surface); padding:.35rem; }
+.warn { border:1px solid #E7D3A8; background:#FCF6E9; color:#6B4A0C; border-radius:8px;
+  padding:.7rem .9rem; font-size:.8438rem; margin-top:.9rem; max-width:80ch; }
+.err { border:1px solid #EBC9C6; background:#FDF2F1; color:#8E2B26; border-radius:8px;
+  padding:.7rem .9rem; font-size:.8438rem; margin-top:.9rem; }
+.cols { display:grid; grid-template-columns:1fr 1fr; gap:2.5rem; margin-top:2.6rem; }
+.cols .note { margin-bottom:.9rem; }
+.comp-label { font-size:.8125rem; font-weight:500; color:var(--ink2); margin:.9rem 0 .3rem; }
+.comp-label:first-of-type { margin-top:0; }
+
+table { width:100%; border-collapse:collapse; font-family:var(--mono); font-size:.8125rem;
+  font-variant-numeric:tabular-nums; background:var(--surface); border:1px solid var(--line); border-radius:10px;
+  overflow:hidden; border-style:hidden; box-shadow:0 0 0 1px var(--line); }
+th { font:600 .6875rem/1 var(--ui); letter-spacing:.09em; text-transform:uppercase; color:var(--ink3);
+  text-align:right; padding:.7rem .9rem; background:#F4F2ED80; border-bottom:1px solid var(--line); }
+td { text-align:right; padding:.55rem .9rem; border-top:1px solid var(--line); }
+th:first-child, td:first-child { text-align:left; }
+tr:first-child td { border-top:0; }
+
+/* methodology: long-form reading */
+.prose { max-width:68ch; }
+.prose h2 { margin-top:2.6rem; }
+.prose p, .prose li { color:var(--ink); }
+.prose ol, .prose ul { padding-left:1.25rem; }
+.prose li { margin:.45rem 0; }
+.prose li::marker { color:var(--ink3); }
+.prose .coda { margin-top:2.6rem; padding-top:1.2rem; border-top:1px solid var(--line); color:var(--ink2); }
+
+.loading { color:var(--ink3); }
+
+/* responsive: structural, not fluid type */
+@media (max-width:900px) {
+  .shell { grid-template-columns:minmax(0,1fr); }
+  .side { min-width:0; }
+  .side { position:static; height:auto; border-right:0; border-bottom:1px solid var(--line);
+    padding:1rem 1rem .9rem; gap:.9rem; }
+  nav { flex-direction:row; overflow-x:auto; margin:0 -1rem; padding:0 1rem; }
+  nav hr { display:none; }
+  .win { padding:0; }
+  .chips { display:flex; overflow-x:auto; margin:0 -1rem; padding:0 1rem 2px; }
+  .chips label { flex:none; }
+  .chips label.wide { grid-column:auto; }
+  .chips span { padding:.45rem .6rem; }
+  .side .note { padding:0; margin-top:.5rem; }
+  .brand { padding:0; }
+  .built { display:none; }
+  main { padding:2rem 1rem 4rem; }
+  h1 { font-size:1.5rem; }
+  .rail-head { display:none; }
+  .row { grid-template-columns:1fr auto; gap:.5rem .9rem; padding:1rem 1.05rem; }
+  .row > :nth-child(2) { display:none; }
+  .row > :nth-child(3) { grid-column:1; }
+  .row > :nth-child(4) { grid-column:2; text-align:right; }
+  .row > :nth-child(5) { grid-column:1 / -1; }
+  .row .err-inline { grid-column:1 / -1; }
+  .stats { grid-template-columns:1fr 1fr; }
+  .stats > div:nth-child(3) { border-left:0; }
+  .stats > div:nth-child(n+3) { border-top:1px solid var(--line); }
+  .cols { grid-template-columns:1fr; gap:2.2rem; }
+}
+@media (prefers-reduced-motion:reduce) { * { transition:none !important; } }
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="side">
+    <a class="brand" href="#/"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><polyline points="1,12 5,9 8,10 11,4 15,6" fill="none" stroke="#534AB7" stroke-width="2" stroke-linejoin="round"/></svg>Bubble Methodology</a>
+    <nav id="nav" aria-label="Views"></nav>
+    <fieldset class="win">
+      <legend>Trend window</legend>
+      <div class="chips" id="chips"></div>
+      <p class="note" id="winnote"></p>
+    </fieldset>
+    <p class="note built" id="built"></p>
+  </aside>
+  <main id="main"><p class="loading">Loading readings&hellip;</p></main>
+</div>
+<script>
+const WINDOWS = [12, 24, 36, 60, 84, 120, 240, 360];
+const C = { ink:"#1A1917", ink2:"#57534B", ink3:"#6B675E", surface:"#FFFFFF", panel:"#F4F2ED",
+  line:"#E5E1D8", line2:"#D5D0C4" };
+// chart marks, unchanged from the notebook figures
+const M = { price:"#534AB7", trend:"#96918A", band:"#BA7517", fill:"rgba(250,199,117,.20)",
+  bubble:"#E24B4A", z:"#1D9E75", grid:"#EDEAE3" };
+const CFG = { displayModeBar:false, responsive:true };
+let D;
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const wlabel = w => w >= 12 ? `${w / 12}y` : `${w}m`;
+const sign = x => (x >= 0 ? "+" : "−") + Math.abs(x).toFixed(2);
+const monthName = ym => new Date(ym + "-15").toLocaleString("en-US", { month:"short", year:"numeric" });
+const fin = x => x !== null && x !== undefined && Number.isFinite(x);
+const lastFin = a => { for (let i = a.length - 1; i >= 0; i--) if (fin(a[i])) return a[i]; return NaN; };
+
+function state(z, crit) {   // mirrors data.state: 'elevated' is within 1 of the threshold
+  if (!fin(z)) return "n/a";
+  return z > crit ? "BUBBLE" : z > crit - 1 ? "elevated" : "normal";
+}
+const band = x => !fin(x) ? "n/a" : x < -1 ? "tight" : x < 1 ? "neutral" : "loose";
+const pill = s => `<span class="pill s-${s === "n/a" ? "na" : s}"><i></i>${s === "BUBBLE" ? "bubble" : s}</span>`;
+const zColor = s => ({ BUBBLE:"var(--alert)", elevated:"var(--warn)" })[s] || "var(--ink)";
+
+// -> {w, crit, z, trend, upper, episodes} at the chosen window, or null if history is too short
+function reading(m, win) {
+  const w = win || m.window, r = m.windows[w];
+  return r ? { w, ...r } : null;
+}
+
+function route() {
+  const [path, q] = location.hash.replace(/^#\/?/, "").split("?");
+  const w = Number(new URLSearchParams(q).get("w"));
+  return { page: path || "", win: WINDOWS.includes(w) ? w : null };
+}
+function href(page, win) { return `#/${page}${win ? `?w=${win}` : ""}`; }
+
+// ---------------------------------------------------------------- chrome
+function sidebar({ page, win }) {
+  const views = [["", "Overview"], ...Object.values(D.markets).map(m => [m.key, m.index]), ["method", "Methodology"]];
+  $("#nav").innerHTML = views.map(([k, label], i) =>
+    (i === views.length - 1 ? "<hr>" : "") +
+    `<a href="${href(k, win)}"${k === page ? ' aria-current="page"' : ""}>${esc(label)}</a>`).join("");
+  $("#chips").innerHTML = [null, ...WINDOWS].map(w =>
+    `<label${w ? "" : ' class="wide"'}><input type="radio" name="w" value="${w || ""}"${w === win ? " checked" : ""}>` +
+    `<span>${w ? wlabel(w) : "Per-market default"}</span></label>`).join("");
+  $("#winnote").innerHTML = win
+    ? `Threshold at ${wlabel(win)}: <b class="num">${critFor(win)}</b>`
+    : "Nasdaq <b>7y</b>, others <b>10y</b> &mdash; see Methodology.";
+}
+function critFor(w) {
+  for (const m of Object.values(D.markets)) if (m.windows && m.windows[w]) return m.windows[w].crit.toFixed(2);
+  return "—";
+}
+function staleBanner() {
+  const s = Object.keys(D.stale || {});
+  return s.length ? `<div class="warn"><b>Serving cached data.</b> Refresh failed for ${s.map(k => `<code>${esc(k)}</code>`).join(", ")}.</div>` : "";
+}
+
+// ---------------------------------------------------------------- charts
+function layout(height, legend = true, extra = {}) {
+  return {
+    height, paper_bgcolor:C.surface, plot_bgcolor:C.surface,
+    font:{ family:"Inter, sans-serif", size:12, color:C.ink2 },
+    margin:{ l:44, r:14, t:legend ? 40 : 10, b:28 },
+    hovermode:"x unified",
+    hoverlabel:{ bgcolor:C.surface, bordercolor:C.line, font:{ family:"IBM Plex Mono, monospace", size:11.5, color:C.ink } },
+    showlegend:legend,
+    legend:{ traceorder:"normal", orientation:"h", y:1.02, x:0, yanchor:"bottom", font:{ size:11.5 }, bgcolor:"rgba(0,0,0,0)" },
+    xaxis:{ type:"date", showgrid:false, showline:true, linecolor:C.line, ticks:"outside", tickcolor:C.line,
+      ticklen:4, tickfont:{ size:11, color:C.ink3 } },
+    yaxis:{ showgrid:true, gridcolor:M.grid, zeroline:false, tickfont:{ size:11, color:C.ink3 },
+      title:{ font:{ size:11, color:C.ink3 } } },
+    ...extra,
+  };
+}
+const hline = (y, yref, color, dash) => ({ type:"line", xref:"paper", x0:0, x1:1, yref, y0:y, y1:y,
+  line:{ color, width:1, dash } });
+
+function episodes(months, z, crit) {
+  const out = []; let s = null;
+  months.forEach((t, i) => {
+    const on = fin(z[i]) && z[i] > crit;
+    if (on && s === null) s = t;
+    else if (!on && s !== null) { out.push([s, t]); s = null; }
+  });
+  if (s !== null) out.push([s, months[months.length - 1]]);
+  return out;
+}
+
+function mainChart(el, m, r) {
+  const x = m.months, h = "%{y:.2f}";
+  const traces = [
+    { x, y:r.trend, name:"trend", legendrank:2, line:{ color:M.trend, width:1 }, hovertemplate:h },
+    { x, y:r.upper, name:`+${r.crit.toFixed(2)}σ`, legendrank:3, line:{ color:M.band, width:1, dash:"dot" },
+      fill:"tonexty", fillcolor:M.fill, hovertemplate:h },
+    { x, y:m.p, name:"log real price", legendrank:1, line:{ color:M.price, width:1.7 }, hovertemplate:h },
+    { x, y:r.z, name:"z", legendrank:4, yaxis:"y2", line:{ color:M.z, width:1.2 }, hovertemplate:h },
+  ];
+  const first = x[r.z.findIndex(fin)];
+  const shapes = [hline(r.crit, "y2", M.band, "dot"), hline(0, "y2", C.line2),
+    ...episodes(x, r.z, r.crit).map(([a, b]) => ({ type:"rect", xref:"x", x0:a, x1:b, yref:"paper", y0:0, y1:1,
+      fillcolor:M.bubble, opacity:.11, line:{ width:0 }, layer:"below" }))];
+  const L = layout(580, true, {
+    yaxis:{ ...layout().yaxis, domain:[.3, 1], title:{ text:`log real price (${m.ccy}, CPI-deflated)`, font:{ size:11, color:C.ink3 } } },
+    yaxis2:{ ...layout().yaxis, domain:[0, .24], title:{ text:"z", font:{ size:11, color:C.ink3 } } },
+    shapes,
+    annotations:[{ xref:"paper", yref:"y2 domain", x:0, y:1, xanchor:"left", yanchor:"bottom", showarrow:false,
+      text:`${wlabel(r.w)} window · threshold ${r.crit.toFixed(2)}`, font:{ size:11, color:C.ink3 },
+      bgcolor:"rgba(255,255,255,.85)" }],
+  });
+  L.xaxis = { ...L.xaxis, anchor:"y2", range:[first, x[x.length - 1]],
+    rangeselector:{ x:1, xanchor:"right", y:1.02, yanchor:"bottom", bgcolor:C.panel, activecolor:C.line2,
+      font:{ size:11, color:C.ink2 },
+      buttons:[{ step:"year", count:10, label:"10y" }, { step:"year", count:20, label:"20y" }, { step:"all", label:"all" }] } };
+  Plotly.newPlot(el, traces, L, CFG);
+}
+
+function crossChart(el, loaded, win) {
+  const colors = [M.price, M.z, M.band, M.bubble];
+  const traces = loaded.map(([m, r], i) => ({ x:m.months, y:r.z, name:`${m.index} · ${wlabel(r.w)}`,
+    line:{ width:1.15, color:colors[i % 4] }, opacity:.85, hovertemplate:"%{y:.2f}" }));
+  const crit = loaded[0][1].crit;
+  const L = layout(400, true, {
+    shapes:[hline(crit, "y", C.line2, "dot")],
+    annotations:[{ xref:"paper", x:0, y:crit, xanchor:"left", yanchor:"bottom", showarrow:false,
+      text:`threshold ≈${crit.toFixed(2)}`, font:{ size:11, color:C.ink3 }, bgcolor:C.surface, borderpad:3 }],
+  });
+  L.yaxis.title.text = "z";
+  const starts = loaded.map(([m, r]) => m.months[r.z.findIndex(fin)]).sort();
+  L.xaxis.range = [starts[0], loaded[0][0].months.at(-1)];
+  Plotly.newPlot(el, traces, L, CFG);
+}
+
+function heatChart(el, m) {
+  const ws = WINDOWS.filter(w => m.windows[w]);
+  const z = ws.map(w => { const r = m.windows[w]; return r.z.map(v => fin(v) ? (v > r.crit ? 1 : 0) : null); });
+  const L = layout(40 + ws.length * 26, false);
+  L.yaxis = { ...L.yaxis, showgrid:false, autorange:"reversed", type:"category" };
+  L.margin.l = 44;
+  Plotly.newPlot(el, [{ type:"heatmap", x:m.months, y:ws.map(wlabel), z, showscale:false, ygap:2, zmin:0, zmax:1,
+    colorscale:[[0, "#F1EFE9"], [1, M.bubble]],
+    customdata:z.map(row => row.map(v => v === 1 ? "bubble" : "not flagged")),
+    hovertemplate:"%{y} window · %{x|%Y-%m} · %{customdata}<extra></extra>" }], L, CFG);
+}
+
+function compChart(el, s) {
+  const L = layout(116, false);
+  L.margin = { l:40, r:10, t:6, b:22 };
+  Plotly.newPlot(el, [{ x:s.months, y:s.v, line:{ color:M.price, width:1.2 }, hovertemplate:"%{y:.2f}" }], L, CFG);
+}
+
+// Inline SVG of the z history, threshold drawn. A row stays a row.
+function sparkline(z, crit, w = 182, h = 38) {
+  const v = z.filter(fin);
+  if (v.length < 3) return "";
+  let lo = Math.min(...v), hi = Math.max(...v, crit);
+  const pad = (hi - lo) * .12 || 1; lo -= pad; hi += pad;
+  const sx = i => 1 + i * (w - 2) / (v.length - 1), sy = y => h - 1 - (y - lo) * (h - 2) / (hi - lo);
+  const pts = v.map((y, i) => `${sx(i).toFixed(1)},${sy(y).toFixed(1)}`).join(" ");
+  const yc = sy(crit).toFixed(1), id = "c" + Math.random().toString(36).slice(2, 8);
+  const above = Math.max(...v) > crit
+    ? `<clipPath id="${id}"><path d="M1,${yc} L${w - 1},${yc} L${w - 1},0 L1,0 Z"/></clipPath>` +
+      `<polyline points="${pts}" fill="none" stroke="${M.bubble}" stroke-width="2.4" clip-path="url(#${id})"/>` : "";
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true" style="display:block;overflow:visible;max-width:100%">` +
+    `<line x1="1" y1="${yc}" x2="${w - 1}" y2="${yc}" stroke="${M.band}" stroke-width="1" stroke-dasharray="3 3"/>` +
+    `<polyline points="${pts}" fill="none" stroke="${M.trend}" stroke-width="1.4" stroke-linejoin="round"/>${above}</svg>`;
+}
+
+// ---------------------------------------------------------------- pages
+function pageOverview(win) {
+  const loaded = [];
+  const rows = Object.values(D.markets).map(m => {
+    if (m.error) return `<div class="row"><div class="mk">${esc(m.index)}</div>` +
+      `<div class="err-inline">Could not be loaded &mdash; ${esc(m.error)}</div></div>`;
+    const r = reading(m, win);
+    if (!r) return `<a class="row" href="${href(m.key, win)}"><div class="mk">${esc(m.index)}<small>${m.ccy}</small></div>` +
+      `<div class="note" style="grid-column:2/-1">History too short for a ${wlabel(win)} window.</div></a>`;
+    loaded.push([m, r]);
+    const z = r.z.at(-1), s = state(z, r.crit), ov = lastFin(m.overlay.v);
+    const flag = m.weak || m.start ? `<br><span class="flag">${m.start ? `from ${m.start.slice(0, 4)} &middot; ` : ""}weak signal</span>` : "";
+    return `<a class="row" href="${href(m.key, win)}">` +
+      `<div class="mk">${esc(m.index)}<small>${m.ccy}${flag}</small></div>` +
+      `<div class="num meta">${wlabel(r.w)}</div>` +
+      `<div><div class="z" style="color:${zColor(s)}">${fin(z) ? sign(z) : "—"}</div><div class="z-sub">vs ${r.crit.toFixed(2)}</div></div>` +
+      `<div>${pill(s)}<div class="meta" style="margin-top:.4rem">${fin(ov)
+        ? `<b>${band(ov)}</b> <span class="num">${sign(ov)}</span>` : '<span style="color:var(--ink3)">not available</span>'}</div></div>` +
+      `<div>${sparkline(r.z.slice(-121), r.crit)}<div class="z-sub" style="margin-top:.3rem">to ${monthName(m.months.at(-1))}` +
+      `${m.prov ? " &middot; provisional" : ""}</div></div></a>`;
+  });
+  $("#main").innerHTML =
+    '<h1>Bubble Methodology</h1><p class="lede">Each market&rsquo;s CPI-deflated real index, measured against ' +
+    'its own rolling trend. A reading is a statistical deviation &mdash; not a forecast, and not advice.</p>' +
+    staleBanner() +
+    '<div class="rail"><div class="rail-head"><span class="th">Index</span><span class="th">Window</span>' +
+    '<span class="th">z</span><span class="th">State &middot; macro</span><span class="th">z, last 10 years</span></div>' +
+    rows.join("") + "</div>" +
+    (loaded.length > 1 ? '<h2>Across markets</h2><p class="lede">One market, or all of them at once? z is built to be ' +
+      'comparable across window lengths, so the per-market windows share an axis; their thresholds differ only in ' +
+      'the second decimal.</p><div class="chart" style="margin-top:1.2rem" role="img" ' +
+      'aria-label="z-score history for every market on one axis"><div id="cross"></div></div>' : "");
+  if (loaded.length > 1) crossChart($("#cross"), loaded, win);
+}
+
+function pageMarket(m, win) {
+  if (m.error) {
+    $("#main").innerHTML = `<h1>${esc(m.index)}</h1><div class="err">Could not be loaded &mdash; ${esc(m.error)}</div>`;
+    return;
+  }
+  const r = reading(m, win);
+  const span = m.start ? ` &middot; history from ${m.start.slice(0, 4)}` : "";
+  let html = `<h1>${esc(m.index)}</h1><p class="lede">Real ${m.ccy}, CPI-deflated &middot; ` +
+    `${wlabel(r ? r.w : win)} rolling trend${span}</p>` + staleBanner() +
+    (m.note ? `<div class="warn">${m.note} The era breakdown is in <code>results/asia_eras.csv</code>.</div>` : "");
+  if (!r) {
+    $("#main").innerHTML = html + `<div class="err">History is too short for a ${wlabel(win)} window. Pick a shorter one.</div>`;
+    return;
+  }
+  const z = r.z.at(-1), s = state(z, r.crit), ov = lastFin(m.overlay.v);
+  const first = m.months[r.z.findIndex(fin)];
+  html += '<div class="stats">' +
+    `<div><span class="th">State</span>${pill(s)}<span class="note">z ${z > r.crit ? "above" : "below"} threshold</span></div>` +
+    `<div><span class="th">z</span><span class="v" style="color:${zColor(s)}">${fin(z) ? sign(z) : "—"}</span><span class="note">threshold ${r.crit.toFixed(2)}</span></div>` +
+    `<div><span class="th">Macro overlay</span><span class="v"${fin(ov) ? "" : ' style="color:var(--ink3)"'}>${fin(ov) ? sign(ov) : "—"}</span><span class="note">${fin(ov) ? band(ov) : "not available"}</span></div>` +
+    `<div><span class="th">Data through</span><span class="v">${monthName(m.months.at(-1))}</span><span class="note">${m.prov ? "provisional" : `readings from ${first.slice(0, 4)}`}</span></div>` +
+    "</div>" +
+    `<div class="chart" role="img" aria-label="${esc(m.index)} log real price against its rolling trend, with z below"><div id="main-chart"></div></div>` +
+    '<div class="cols"><section><h3>Episodes</h3><p class="note">A run of flagged months is one event. ' +
+    "Drawdown runs from the episode peak over the following 24 months.</p>" +
+    (r.episodes.length
+      ? "<table><thead><tr><th>Entered</th><th>z</th><th>Months</th><th>Real drawdown %</th></tr></thead><tbody>" +
+        r.episodes.map(e => `<tr><td>${e.entered}</td><td>${e.z.toFixed(2)}</td><td>${e.months}</td>` +
+          `<td>${e.dd === null ? "—" : e.dd.toFixed(1)}</td></tr>`).join("") + "</tbody></table>"
+      : '<div class="card note">No episode at this window &mdash; the reading has never crossed its threshold over the available history.</div>') +
+    '</section><section><h3>Macro overlay</h3><p class="note">A separate signal. It does not enter z and does not change the state above.</p>' +
+    (Object.keys(m.comps).length
+      ? Object.entries(m.comps).map(([k, c]) => `<div class="comp-label">${k.replace("_", " ")} &middot; ` +
+          `<span class="num">${lastFin(c.v).toFixed(2)}</span></div><div class="chart"><div id="comp-${k}"></div></div>`).join("")
+      : '<div class="card note">No macro components are published for this market in the sources used here.</div>') +
+    '</section></div>' +
+    '<h2>Window sensitivity</h2><p class="lede">The window is the biggest judgement call in the model, so it is ' +
+    'shown rather than hidden. Short windows fire constantly; the longest ones never fire.</p>' +
+    '<div class="chart" style="margin-top:1.2rem" role="img" aria-label="Bubble state by month for each window length"><div id="heat"></div></div>';
+  $("#main").innerHTML = html;
+  mainChart($("#main-chart"), m, r);
+  Object.entries(m.comps).forEach(([k, c]) => compChart($(`#comp-${k}`), c));
+  heatChart($("#heat"), m);
+}
+
+function pageMethod() {
+  $("#main").innerHTML = $("#method").innerHTML;
+}
+
+function render() {
+  const rt = route();
+  sidebar(rt);
+  const m = D.markets[rt.page];
+  if (rt.page === "method") pageMethod();
+  else if (m) pageMarket(m, rt.win);
+  else pageOverview(rt.win);
+  document.title = (m ? m.index + " · " : rt.page === "method" ? "Methodology · " : "") + "Bubble Methodology";
+}
+
+$("#chips").addEventListener("change", e => {
+  const { page } = route();
+  location.hash = href(page, Number(e.target.value) || null);
+});
+window.addEventListener("hashchange", () => { render(); window.scrollTo(0, 0); });
+
+window.addEventListener("DOMContentLoaded", async () => {
+  try {
+    const res = await fetch("data.json", { cache:"no-cache" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    D = await res.json();
+  } catch (e) {
+    $("#main").innerHTML = `<h1>Bubble Methodology</h1><div class="err">The readings could not be loaded (${esc(e.message)}). Reload to try again.</div>`;
+    return;
+  }
+  $("#built").textContent = `Readings rebuilt ${D.built}`;
+  render();
+});
+</script>
+
+<template id="method">
+<article class="prose">
+<h1>Methodology</h1>
+<p class="lede">Every number on this site traces back to a paragraph on this page.</p>
+
+<h2>What the model computes</h2>
+<ol>
+<li><b>Real price.</b> The monthly mean of daily closes, divided by that market&rsquo;s own CPI, then logged. Every market uses its <b>local</b> index and <b>local</b> CPI &mdash; no currency conversion, no special cases.</li>
+<li><b>Rolling trend.</b> For each month <i>t</i>, a straight line is fitted to the <i>W</i> months <b>ending at</b> <i>t</i>. Nothing after <i>t</i> is ever used: every number shown for month <i>t</i> was computable at <i>t</i>.</li>
+<li><b>Leverage correction.</b> Month <i>t</i> is <b>removed from its own fit</b> before being measured against it. The last point of a linear fit is its highest-leverage point, so an uncorrected residual there is shrunk by <code>sqrt(1-h)</code> &mdash; about 16% at a 12-month window, under 1% at 240. Without this, z-scores from different window lengths are not comparable, and comparing windows is a feature here.</li>
+<li><b>z.</b> The deviation divided by its own standard error, distributed <b>t(W&minus;3)</b> under a trend-stationary null.</li>
+<li><b>Threshold.</b> <code>zcrit(W)</code> carries the same tail probability as 2&sigma; on a normal at that window&rsquo;s degrees of freedom: 2.32 at W=12, 2.01 at W=360. A flat 2.0 would be a looser test on short windows.</li>
+<li><b>State.</b> <i>Bubble</i> when z exceeds the threshold, <i>elevated</i> within 1 of it, otherwise <i>normal</i>.</li>
+</ol>
+
+<h2>The last reading is provisional</h2>
+<p>The series runs to the current month, so the newest reading is marked <b>provisional</b> and will move:</p>
+<ul>
+<li><b>The month is still trading.</b> Its level is the mean of the sessions so far, not of the whole month. Same quantity, noisier estimate.</li>
+<li><b>CPI publishes a month or two behind price.</b> Until it prints, the last published CPI is carried forward, which deflates those months as if inflation were zero. That overstates real price by exactly the inflation that has not been reported yet &mdash; immaterial at 2% a year, material in Turkey. The carry stops after three months and the month is dropped instead, so a dead CPI feed cannot quietly turn a nominal rally into a real one.</li>
+</ul>
+<p>Neither uses information from after the month it is stamped on, so the no-look-ahead rule still holds. A provisional month can cross the threshold and then uncross it when the real CPI lands.</p>
+<p>Readings are rebuilt once a day from the source feeds. If a feed fails, the last good copy is used and the page says so.</p>
+
+<h2>Window lengths</h2>
+<p>The Nasdaq Composite reads at a 7-year window, the other three at 10 years. These were chosen against criteria fixed before any results were read, led by a threshold-free measure: the rank correlation between z and subsequent real returns. The study is in <code>results/window_study.csv</code>, regenerated by <code>evaluate.py</code>.</p>
+<p>The original 20-year default was dropped. On the Nasdaq it was wrong-signed while flagging 14.5% of months &mdash; 6.4&times; the rate its own threshold claims &mdash; and on the FTSE 100 and BIST 100 it never fired at all.</p>
+
+<h2>The macro overlay</h2>
+<p>Real policy rate (negated), credit growth and curve slope, each ranked against its own trailing decade and oriented so <b>higher means looser</b>. The score averages whichever components exist for a market; a missing series is treated as missing, never as neutral.</p>
+<p>It is a <b>separate</b> signal. It never enters z, never changes the state, and is never averaged with z into a single number. z says <i>price is far above its own trend</i>; it cannot say <i>and credit is cheap</i>. The overlay carries that separately, so neither contaminates the other. It has <b>not</b> been tested for predictive power &mdash; it is context, and it is labelled as context.</p>
+
+<h2>Limitations</h2>
+<ul>
+<li><b>Trend-stationarity is a strong assumption.</b> The test cannot separate a bubble from a structural break or a genuine repricing of earnings power.</li>
+<li><b>This is not a timing signal.</b> On the Nasdaq at a 20-year window the state turned on in 1995 &mdash; four years and roughly a 4&times; before the peak.</li>
+<li><b>No multiple-testing correction.</b> Eight windows across four markets over hundreds of months is a great many tests, and noise alone clears a 2&sigma; threshold about 2% of the time. The window-sensitivity strip exists to make that visible, not to let anyone shop for the window that says what they want.</li>
+<li><b>Asia is restricted, and still weak.</b> The Nikkei is evaluated from 1990 only: its 1970&ndash;89 re-rating ran the wrong way for two decades and left the full-sample reading wrong-signed. The trend is fitted on the restricted history, not merely displayed from it, so readings begin ten years after the cut. That restriction was chosen <i>after</i> seeing the result, which is why it is stated here and on the market itself. Even restricted, this reading carries less information about forward returns than the other three. Filtering does not fix it; every filter tested is in <code>results/filter_study.csv</code>.</li>
+<li><b>Headline CPI is a choice.</b> Asset prices and consumer prices are different objects.</li>
+<li><b>Turkish CPI is contested.</b> The official CBRT series is used.</li>
+<li><b>Turkey is scored in local CPI-deflated terms</b> like everywhere else. A USD-converted BIST looks very different; consistency was chosen over per-market tuning, because the moment one market gets a bespoke deflator the cross-market comparison stops meaning anything.</li>
+</ul>
+<p class="coda">This model measures statistical deviation from trend. It does not forecast returns.</p>
+</article>
+</template>
+</body>
+</html>

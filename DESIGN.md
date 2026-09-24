@@ -206,10 +206,11 @@ data/
     evds_TP.FG.J0.parquet   # one file per EVDS series
 ```
 
-**Fetch on demand with a staleness check.** On request, if the parquet is absent
-or its mtime is older than the refresh interval, refetch and rewrite; otherwise
-read it. No scheduler, no database, no cron, no migration story. Identical
-behaviour on localhost and in a container.
+**Fetch with a staleness check.** If the parquet is absent or its mtime is older
+than the refresh interval, refetch and rewrite; otherwise read it. No database, no
+migration story. Since the move to a static site (§4) the fetch runs at build
+time: a daily GitHub Action runs `build.py` and restores `data/cache` from the
+previous run, so the staleness logic and stale-fallback behave exactly as before.
 
 Refresh intervals: prices 1 day, CPI and macro 7 days (these are monthly series;
 hitting FRED hourly for a number that changes twelve times a year is pointless).
@@ -291,9 +292,13 @@ front, because the whole app is four instances of the same thing.
 
 ## 4. UI
 
-Streamlit + Plotly. One command to localhost, containerises for deploy, no JS,
-no build step, no API layer. If something external ever needs the numbers, a
-read-only FastAPI endpoint bolts on later — do not build it now.
+**Static site on Cloudflare** (Workers static assets) (moved off Streamlit 2026-09-24). `build.py`
+runs the unchanged Python model for every market × window and writes
+`site/data.json`; `site/index.html` is one static page (Plotly.js from a CDN, no
+build step, no framework) that renders it. All math stays in Python — the page
+only draws. Deploy is `.github/workflows/deploy.yml`: daily, on push, on demand.
+Views are hash routes (`#/`, `#/new_york?w=120`, `#/method`), so every view and
+window is linkable.
 
 ### 4.1 Landing — cross-market overview
 
@@ -385,8 +390,10 @@ page is wrong.
 6. ~~Macro overlay.~~ **Done** — `overlay.py`, self-check passing.
 7. ~~Streamlit UI.~~ **Done** — `app.py`. All pages render clean under
    `streamlit.testing.v1.AppTest`.
-8. `.env.example` done. **Remaining: Dockerfile and deploy**, plus Turkey's
-   USD-converted context series (§1), which is still not built.
+8. `.env.example` done. Deploy **done** — static site on Cloudflare (§4);
+   the Streamlit app, Dockerfile and compose file were removed. **Remaining:**
+   Turkey's USD-converted context series (§1), and the nominal-series toggle
+   (§4.2); neither was in the Streamlit app either.
 
 ## 6. Limitations — state these in the app, not just here
 

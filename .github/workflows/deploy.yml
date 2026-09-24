@@ -1,0 +1,36 @@
+# Rebuild the readings from the source feeds and publish site/ to Cloudflare (Workers static assets).
+# Daily, on every push to main, and on demand.
+name: deploy
+on:
+  schedule: [{ cron: "30 6 * * *" }]
+  push: { branches: [main] }
+  workflow_dispatch:
+concurrency: { group: deploy, cancel-in-progress: false }
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version-file: .python-version, cache: pip }
+      - run: pip install -r requirements.txt
+
+      # the parquet cache carries over between runs: a feed that fails today is
+      # served from yesterday's copy and flagged on the page, not dropped
+      - uses: actions/cache@v4
+        with:
+          path: data/cache
+          key: cache-${{ github.run_id }}
+          restore-keys: cache-
+
+      - run: python bubble.py && python overlay.py && python build.py
+        env:
+          EVDS_API_KEY: ${{ secrets.EVDS_API_KEY }}
+          ESTAT_APP_ID: ${{ secrets.ESTAT_APP_ID }}
+
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy
