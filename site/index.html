@@ -64,6 +64,12 @@ nav hr { border:0; height:1px; background:var(--line); margin:.45rem .55rem; }
 .chips input:hover + span { background:#E8E5DE; }
 .chips input:checked + span { background:var(--ink); border-color:var(--ink); color:var(--canvas); }
 .chips input:focus-visible + span { outline:2px solid var(--accent); outline-offset:2px; }
+.chips input:disabled { cursor:not-allowed; }
+.chips input:disabled + span { color:var(--line2); border-style:dashed; background:transparent; }
+.skip { position:absolute; left:1rem; top:-3rem; z-index:10; background:var(--ink); color:var(--canvas);
+  padding:.5rem .8rem; border-radius:6px; font-weight:500; text-decoration:none; }
+.skip:focus { top:1rem; }
+h1:focus { outline:none; }
 .side .note { padding:0 .55rem; margin:.6rem 0 0; }
 .built { margin-top:auto !important; color:var(--ink3) !important; font-size:.75rem !important; }
 
@@ -130,6 +136,8 @@ table { width:100%; border-collapse:collapse; font-family:var(--mono); font-size
 th { font:600 .6875rem/1 var(--ui); letter-spacing:.09em; text-transform:uppercase; color:var(--ink3);
   text-align:right; padding:.7rem .9rem; background:#F4F2ED80; border-bottom:1px solid var(--line); }
 td { text-align:right; padding:.55rem .9rem; border-top:1px solid var(--line); }
+td small { display:block; font:500 .6875rem/1.3 var(--ui); color:var(--ink3); }
+tr.open td { color:var(--ink3); }
 th:first-child, td:first-child { text-align:left; }
 tr:first-child td { border-top:0; }
 
@@ -178,6 +186,7 @@ tr:first-child td { border-top:0; }
 </style>
 </head>
 <body>
+<a class="skip" href="#/" id="skip">Skip to content</a>
 <div class="shell">
   <aside class="side">
     <a class="brand" href="#/"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><polyline points="1,12 5,9 8,10 11,4 15,6" fill="none" stroke="#534AB7" stroke-width="2" stroke-linejoin="round"/></svg>Bubble Methodology</a>
@@ -231,14 +240,31 @@ function route() {
 function href(page, win) { return `#/${page}${win ? `?w=${win}` : ""}`; }
 
 // ---------------------------------------------------------------- chrome
-function sidebar({ page, win }) {
+// Built once: re-rendering the controls on every route change would drop keyboard
+// focus out of the window radios after each arrow-key step.
+function buildSidebar() {
   const views = [["", "Overview"], ...Object.values(D.markets).map(m => [m.key, m.index]), ["method", "Methodology"]];
   $("#nav").innerHTML = views.map(([k, label], i) =>
-    (i === views.length - 1 ? "<hr>" : "") +
-    `<a href="${href(k, win)}"${k === page ? ' aria-current="page"' : ""}>${esc(label)}</a>`).join("");
+    (i === views.length - 1 ? "<hr>" : "") + `<a data-page="${k}">${esc(label)}</a>`).join("");
   $("#chips").innerHTML = [null, ...WINDOWS].map(w =>
-    `<label${w ? "" : ' class="wide"'}><input type="radio" name="w" value="${w || ""}"${w === win ? " checked" : ""}>` +
+    `<label${w ? "" : ' class="wide"'}><input type="radio" name="w" value="${w || ""}">` +
     `<span>${w ? wlabel(w) : "Per-market default"}</span></label>`).join("");
+}
+function sidebar({ page, win }) {
+  document.querySelectorAll("#nav a").forEach(a => {
+    a.href = href(a.dataset.page, win);
+    if (a.dataset.page === page) a.setAttribute("aria-current", "page");
+    else a.removeAttribute("aria-current");
+  });
+  const m = D.markets[page];
+  document.querySelectorAll("#chips input").forEach(i => {
+    const w = Number(i.value) || null;
+    i.checked = w === win;
+    // a window longer than this market's history has no reading: say so, don't offer it
+    const none = !!(w && m && m.windows && !m.windows[w]);
+    i.disabled = none && w !== win;
+    i.parentElement.title = none ? `${m.index} has too little history for a ${wlabel(w)} window` : "";
+  });
   $("#winnote").innerHTML = win
     ? `Threshold at ${wlabel(win)}: <b class="num">${critFor(win)}</b>`
     : "Nasdaq <b>7y</b>, others <b>10y</b> &mdash; see Methodology.";
@@ -311,10 +337,31 @@ function mainChart(el, m, r) {
   Plotly.newPlot(el, traces, L, CFG);
 }
 
+// The part of a z line above its own threshold, cut exactly at the crossing, so it can
+// be redrawn in bubble red. Everything else is null (a gap), like the sparklines' clip.
+function aboveOnly(x, z, crit) {
+  const t = x.map(d => Date.parse(d + "-01")), X = [], Y = [];
+  const iso = ms => new Date(ms).toISOString().slice(0, 10);
+  for (let i = 0; i < z.length; i++) {
+    const a = z[i - 1], b = z[i], up = fin(b) && b > crit;
+    if (i && fin(a) && fin(b) && (a > crit) !== up) {       // crossed between i-1 and i
+      X.push(iso(t[i - 1] + (t[i] - t[i - 1]) * (crit - a) / (b - a))); Y.push(crit);
+    }
+    X.push(x[i]); Y.push(up ? b : null);
+  }
+  return { X, Y };
+}
+
 function crossChart(el, loaded, win) {
-  const colors = [M.price, M.z, M.band, M.bubble];
+  // market identity from quiet hues; red and green stay reserved for bubble and z
+  const colors = ["#534AB7", "#3D6B85", "#8A6D45", "#85507A"];
   const traces = loaded.map(([m, r], i) => ({ x:m.months, y:r.z, name:`${m.index} · ${wlabel(r.w)}`,
-    line:{ width:1.15, color:colors[i % 4] }, opacity:.85, hovertemplate:"%{y:.2f}" }));
+    legendgroup:m.key, line:{ width:1.15, color:colors[i % 4] }, hovertemplate:"%{y:.2f}" }));
+  loaded.forEach(([m, r]) => {
+    const { X, Y } = aboveOnly(m.months, r.z, r.crit);
+    traces.push({ x:X, y:Y, legendgroup:m.key, showlegend:false, hoverinfo:"skip",
+      line:{ width:2, color:M.bubble }, connectgaps:false });
+  });
   const crit = loaded[0][1].crit;
   const L = layout(400, true, {
     shapes:[hline(crit, "y", C.line2, "dot")],
@@ -384,7 +431,7 @@ function pageOverview(win) {
       `${m.prov ? " &middot; provisional" : ""}</div></div></a>`;
   });
   $("#main").innerHTML =
-    '<h1>Bubble Methodology</h1><p class="lede">Each market&rsquo;s CPI-deflated real index, measured against ' +
+    '<h1 tabindex="-1">Bubble Methodology</h1><p class="lede">Each market&rsquo;s CPI-deflated real index, measured against ' +
     'its own rolling trend. A reading is a statistical deviation &mdash; not a forecast, and not advice.</p>' +
     staleBanner() +
     '<div class="rail"><div class="rail-head"><span class="th">Index</span><span class="th">Window</span>' +
@@ -399,22 +446,25 @@ function pageOverview(win) {
 
 function pageMarket(m, win) {
   if (m.error) {
-    $("#main").innerHTML = `<h1>${esc(m.index)}</h1><div class="err">Could not be loaded &mdash; ${esc(m.error)}</div>`;
+    $("#main").innerHTML = `<h1 tabindex="-1">${esc(m.index)}</h1><div class="err">Could not be loaded &mdash; ${esc(m.error)}</div>`;
     return;
   }
   const r = reading(m, win);
   const span = m.start ? ` &middot; history from ${m.start.slice(0, 4)}` : "";
-  let html = `<h1>${esc(m.index)}</h1><p class="lede">Real ${m.ccy}, CPI-deflated &middot; ` +
-    `${wlabel(r ? r.w : win)} rolling trend${span}</p>` + staleBanner() +
+  let html = `<h1 tabindex="-1">${esc(m.index)}</h1><p class="lede">Real ${m.ccy}, CPI-deflated` +
+    `${r ? ` &middot; ${wlabel(r.w)} rolling trend` : ""}${span}</p>` + staleBanner() +
     (m.note ? `<div class="warn">${m.note} The era breakdown is in <code>results/asia_eras.csv</code>.</div>` : "");
   if (!r) {
-    $("#main").innerHTML = html + `<div class="err">History is too short for a ${wlabel(win)} window. Pick a shorter one.</div>`;
+    const longest = Math.max(...Object.keys(m.windows).map(Number));
+    $("#main").innerHTML = html + `<div class="err">${esc(m.index)} has ${Math.floor(m.months.length / 12)} years ` +
+      `of real price history, too short for a ${wlabel(win)} trend window. The longest window it supports is ` +
+      `<a href="${href(m.key, longest)}">${wlabel(longest)}</a>.</div>`;
     return;
   }
   const z = r.z.at(-1), s = state(z, r.crit), ov = lastFin(m.overlay.v);
   const first = m.months[r.z.findIndex(fin)];
   html += '<div class="stats">' +
-    `<div><span class="th">State</span>${pill(s)}<span class="note">z ${z > r.crit ? "above" : "below"} threshold</span></div>` +
+    `<div><span class="th">State</span>${pill(s)}<span class="note">${!fin(z) ? "no reading this month" : `z ${z > r.crit ? "above" : "below"} threshold`}</span></div>` +
     `<div><span class="th">z</span><span class="v" style="color:${zColor(s)}">${fin(z) ? sign(z) : "—"}</span><span class="note">threshold ${r.crit.toFixed(2)}</span></div>` +
     `<div><span class="th">Macro overlay</span><span class="v"${fin(ov) ? "" : ' style="color:var(--ink3)"'}>${fin(ov) ? sign(ov) : "—"}</span><span class="note">${fin(ov) ? band(ov) : "not available"}</span></div>` +
     `<div><span class="th">Data through</span><span class="v">${monthName(m.months.at(-1))}</span><span class="note">${m.prov ? "provisional" : `readings from ${first.slice(0, 4)}`}</span></div>` +
@@ -424,8 +474,13 @@ function pageMarket(m, win) {
     "Drawdown runs from the episode peak over the following 24 months.</p>" +
     (r.episodes.length
       ? "<table><thead><tr><th>Entered</th><th>z</th><th>Months</th><th>Real drawdown %</th></tr></thead><tbody>" +
-        r.episodes.map(e => `<tr><td>${e.entered}</td><td>${e.z.toFixed(2)}</td><td>${e.months}</td>` +
-          `<td>${e.dd === null ? "—" : e.dd.toFixed(1)}</td></tr>`).join("") + "</tbody></table>"
+        r.episodes.map(e => `<tr${e.open ? ' class="open"' : ""}><td>${e.entered}</td><td>${e.z.toFixed(2)}</td>` +
+          `<td>${e.months}${e.running ? '<small>running</small>' : ""}</td>` +
+          `<td>${e.dd === null ? "\u2014" : e.dd.toFixed(1)}${e.open ? "<small>so far</small>" : ""}</td></tr>`).join("") +
+        "</tbody></table>" +
+        (r.episodes.some(e => e.open) ? '<p class="note" style="margin-top:.6rem">Greyed rows are not settled: fewer ' +
+          "than 24 months have passed since the episode ended, so the drawdown is only what has happened so far." +
+          "</p>" : "")
       : '<div class="card note">No episode at this window &mdash; the reading has never crossed its threshold over the available history.</div>') +
     '</section><section><h3>Macro overlay</h3><p class="note">A separate signal. It does not enter z and does not change the state above.</p>' +
     (Object.keys(m.comps).length
@@ -448,6 +503,7 @@ function pageMethod() {
 
 function render() {
   const rt = route();
+  lastPage = rt.page;
   sidebar(rt);
   const m = D.markets[rt.page];
   if (rt.page === "method") pageMethod();
@@ -456,11 +512,17 @@ function render() {
   document.title = (m ? m.index + " · " : rt.page === "method" ? "Methodology · " : "") + "Bubble Methodology";
 }
 
+let lastPage = null;
+$("#skip").addEventListener("click", e => { e.preventDefault(); $("#main h1")?.focus(); });
 $("#chips").addEventListener("change", e => {
-  const { page } = route();
-  location.hash = href(page, Number(e.target.value) || null);
+  location.hash = href(route().page, Number(e.target.value) || null);
 });
-window.addEventListener("hashchange", () => { render(); window.scrollTo(0, 0); });
+window.addEventListener("hashchange", () => {
+  const page = route().page, moved = page !== lastPage;
+  render();
+  // a new page starts at its title; a window change keeps focus and scroll where they were
+  if (moved) { window.scrollTo(0, 0); $("#main h1")?.focus({ preventScroll:true }); }
+});
 
 window.addEventListener("DOMContentLoaded", async () => {
   try {
@@ -472,13 +534,14 @@ window.addEventListener("DOMContentLoaded", async () => {
     return;
   }
   $("#built").textContent = `Readings rebuilt ${D.built}`;
+  buildSidebar();
   render();
 });
 </script>
 
 <template id="method">
 <article class="prose">
-<h1>Methodology</h1>
+<h1 tabindex="-1">Methodology</h1>
 <p class="lede">Every number on this site traces back to a paragraph on this page.</p>
 
 <h2>What the model computes</h2>

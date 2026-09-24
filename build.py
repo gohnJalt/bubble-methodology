@@ -40,16 +40,24 @@ def episodes(flag):
 
 def entry_table(m):
     """Every episode: entry month, z at entry, length, drawdown from the episode's
-    real peak to the lowest point of the following 24 months."""
+    real peak to the lowest point of the following 24 months.
+
+    running: the state is still on in the last month, so `months` is a count so far.
+    open: fewer than 24 months have followed the episode, so `dd` is not final --
+    shown as a drawdown-so-far, never as a settled outcome.
+    """
     tz, crit, real = m["tz"], m["crit"], m["df"]["real"]
+    flag = tz["z"] > crit
     rows = []
-    for s, e in episodes(tz["z"] > crit):
+    for s, e in episodes(flag):
         peak = real.loc[s:e].max()
         after = real.loc[e:].head(25)
         dd = (after.min() / peak - 1) * 100 if len(after) and peak == peak else np.nan
         rows.append(dict(entered=f"{s:%Y-%m}", z=round(float(tz["z"].loc[s]), 2),
                          months=len(tz.loc[s:e]),
-                         dd=None if dd != dd else round(float(dd), 1)))
+                         dd=None if dd != dd else round(float(dd), 1),
+                         running=bool(flag.iloc[-1]) and e == flag.index[-1],
+                         open=len(after) < 25))
     return rows
 
 
@@ -93,6 +101,17 @@ def _selfcheck():
     ep = episodes(f)
     assert [(f"{a:%m}", f"{b:%m}") for a, b in ep] == [("02", "04"), ("05", "05")], ep
     assert arr([1.23456, float("nan")], 2) == [1.23, None]
+
+    # an episode with <24 months after it is open; one still on at the end is running
+    idx = pd.period_range("2000-01", periods=40, freq="M").to_timestamp("M")
+    z = pd.Series(0.0, index=idx)
+    z.iloc[5:8] = 3.0          # closed: 32 months follow it
+    z.iloc[30:33] = 3.0        # ended, but only 8 months follow it
+    z.iloc[-2:] = 3.0          # still on in the last month
+    m = dict(tz=pd.DataFrame({"z": z}), crit=2.0,
+             df=pd.DataFrame({"real": pd.Series(100.0, index=idx)}))
+    got = [(r["open"], r["running"]) for r in entry_table(m)]
+    assert got == [(False, False), (True, False), (True, True)], got
 
 
 if __name__ == "__main__":
