@@ -6,3 +6,6 @@ __pycache__/
 graphify-out/
 site/data.json
 .wrangler/
+DESIGN.md
+
+.impeccable/
