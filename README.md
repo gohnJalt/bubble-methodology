@@ -3,7 +3,7 @@
 Rolling statistical test for whether an equity index trades above what its own
 history implies, across New York, London, Asia and Turkey.
 
-Design and rationale: **DESIGN.md**. Verified data series: **SERIES.md**.
+Verified data series: **SERIES.md**.
 
 ## Run
 
@@ -51,4 +51,4 @@ Every module runs its own self-check: `.venv/bin/python <bubble|overlay|data|eva
 
 ## Not built yet
 
-- Turkey's USD-converted context series (DESIGN.md §1).
+- Turkey's USD-converted context series.
