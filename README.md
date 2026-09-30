@@ -39,7 +39,9 @@ Workers", or a custom token with *Workers Scripts: Edit*), `CLOUDFLARE_ACCOUNT_I
 | `overlay.py` | macro overlay score — a separate signal, never mixed into z |
 | `data.py` | market registry + fetch/parquet cache (yfinance, FRED, ONS, e-Stat, EVDS) |
 | `build.py` | runs every market × window, writes `site/data.json` |
-| `site/index.html` | the whole UI: static HTML + Plotly.js, reads `data.json` |
+| `site/index.html` | the whole UI (Market Readings): static HTML + Plotly.js, reads `data.json` (valuation lens) and `risk.json` (risk lens) |
+| `site/risk.json` | XU100/lira risk readings, **committed**: pushed from the jump-model machine after each daily run (`jump-model/src/site_export.py`), because its USDTRY source is a local Bloomberg file CI cannot fetch |
+| `PRODUCT.md` | product truth for the combined site |
 | `evaluate.py` | window study — regenerates every table in `results/` |
 | `filters.py` | filter study (one-sided HP, moving averages) |
 | `draft/` | the original notebook this was ported from |

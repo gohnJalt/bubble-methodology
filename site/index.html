@@ -3,301 +3,469 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Bubble Methodology</title>
-<meta name="description" content="Each market's CPI-deflated real equity index, measured against its own rolling trend. Nasdaq, FTSE 100, Nikkei 225, BIST 100.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpolyline points='1,12 5,9 8,10 11,4 15,6' fill='none' stroke='%23534AB7' stroke-width='2' stroke-linejoin='round'/%3E%3C/svg%3E">
+<title>Market Readings</title>
+<meta name="description" content="Daily readings from separately validated market models: XU100 and lira risk, and real-price bubble tests for BIST 100, Nasdaq, FTSE 100 and Nikkei 225.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%23161616'/%3E%3Cpath d='M3 11.5h10M3 8.5h6M3 5.5h8' stroke='%23fff' stroke-width='1.4'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/plotly.js-cartesian-dist-min@4.1.1/plotly-cartesian.min.js" defer></script>
 <style>
-/* Operate surface. The instrument, not the brand: the reading should disappear into
-   the data. Mark palette inherited unchanged from the original notebook figures. */
 :root {
-  --ink:#1A1917; --ink2:#57534B; --ink3:#6B675E;
-  --canvas:#FBFAF8; --surface:#FFFFFF; --panel:#F4F2ED;
-  --line:#E5E1D8; --line2:#D5D0C4; --accent:#534AB7;
-  --alert:#B7332D; --warn:#8A5A0F; --ok:#136A4C;
-  --ui:'Inter', ui-sans-serif, system-ui, sans-serif;
-  --mono:'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
+  --paper:#F7F7F5; --paper2:#EFEEEB; --ink:#161616; --ink2:#3D3D3B; --ink3:#6A6A67;
+  --hair:#DEDDD9; --rule:#161616; --grid:#EAE9E5; --bar:#CFCEC9;
+  --red:#C4382C; --red-bg:#F6E4E1; --hl:#ECE8DA;
+  --sans:'Public Sans', ui-sans-serif, system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper:#141414; --paper2:#1D1D1C; --ink:#EDEDEA; --ink2:#C8C8C4; --ink3:#9A9A95;
+    --hair:#2E2E2C; --rule:#EDEDEA; --grid:#222221; --bar:#3A3A38;
+    --red:#EA6A5E; --red-bg:#35201D; --hl:#34301F;
+  }
+}
+:root[data-theme="dark"] {
+  --paper:#141414; --paper2:#1D1D1C; --ink:#EDEDEA; --ink2:#C8C8C4; --ink3:#9A9A95;
+  --hair:#2E2E2C; --rule:#EDEDEA; --grid:#222221; --bar:#3A3A38;
+  --red:#EA6A5E; --red-bg:#35201D; --hl:#34301F;
 }
 * { box-sizing:border-box; }
 html { -webkit-text-size-adjust:100%; }
-body { margin:0; background:var(--canvas); color:var(--ink); font:400 .9375rem/1.55 var(--ui);
-  -webkit-font-smoothing:antialiased; }
+body { margin:0; background:var(--paper); color:var(--ink); font:400 .9375rem/1.55 var(--sans);
+  -webkit-font-smoothing:antialiased; font-variant-numeric:tabular-nums lining-nums; }
 
-/* browser surfaces */
-::selection { background:#534AB722; color:var(--ink); }
-* { scrollbar-width:thin; scrollbar-color:var(--line2) transparent; }
+::selection { background:var(--hl); color:var(--ink); }
+* { scrollbar-width:thin; scrollbar-color:var(--hair) transparent; }
 ::-webkit-scrollbar { width:10px; height:10px; }
-::-webkit-scrollbar-thumb { background:var(--line2); border-radius:6px; border:3px solid var(--canvas); }
-::-webkit-scrollbar-thumb:hover { background:var(--ink3); }
-:focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:3px; }
-a { color:var(--accent); text-underline-offset:3px; text-decoration-thickness:1px; }
-code { font-family:var(--mono); font-size:.85em; background:var(--panel); padding:.05rem .3rem; border-radius:4px; }
+::-webkit-scrollbar-thumb { background:var(--hair); border:3px solid var(--paper); }
+:focus-visible { outline:1.5px solid var(--ink); outline-offset:3px; }
+a { color:var(--ink); text-decoration:underline; text-decoration-color:var(--hair); text-underline-offset:3px;
+  text-decoration-thickness:1px; transition:text-decoration-color 150ms ease; }
+a:hover { text-decoration-color:var(--ink); }
+code { font:.85em ui-monospace, SFMono-Regular, Menlo, monospace; background:var(--paper2); padding:.05rem .3rem; }
 
-/* shell */
-.shell { display:grid; grid-template-columns:232px minmax(0,1fr); min-height:100vh; }
-.side { background:var(--panel); border-right:1px solid var(--line); padding:1.6rem 1.1rem;
-  position:sticky; top:0; height:100vh; overflow:auto; display:flex; flex-direction:column; gap:1.6rem; }
-.brand { font-weight:600; font-size:.9375rem; color:var(--ink); text-decoration:none; letter-spacing:-.01em;
-  display:flex; align-items:center; gap:.5rem; padding:0 .55rem; }
-.brand svg { flex:none; }
-nav { display:flex; flex-direction:column; gap:.1rem; }
-nav a { color:var(--ink2); text-decoration:none; font-weight:500; font-size:.9rem;
-  padding:.36rem .55rem; border-radius:7px; transition:background 140ms ease, color 140ms ease; white-space:nowrap; }
-nav a:hover { background:#E8E5DE; color:var(--ink); }
-nav a[aria-current="page"] { background:var(--surface); color:var(--ink); box-shadow:0 1px 2px rgba(26,25,23,.06); }
-nav hr { border:0; height:1px; background:var(--line); margin:.45rem .55rem; }
-
-.win { border:0; margin:0; padding:0 .55rem; min-width:0; }
-.win legend, .th { font-size:.6875rem; font-weight:600; letter-spacing:.09em; text-transform:uppercase;
-  color:var(--ink3); padding:0; margin-bottom:.55rem; }
-.chips { display:grid; grid-template-columns:repeat(4,1fr); gap:.25rem; }
-.chips label { position:relative; }
-.chips input { position:absolute; opacity:0; inset:0; margin:0; cursor:pointer; }
-.chips span { display:block; text-align:center; font:500 .78rem/1 var(--mono); color:var(--ink2);
-  padding:.45rem 0; border:1px solid var(--line2); border-radius:6px; background:transparent;
-  transition:background 140ms ease, border-color 140ms ease, color 140ms ease; }
-.chips label.wide { grid-column:span 4; }
-.chips label.wide span { font-family:var(--ui); }
-.chips input:hover + span { background:#E8E5DE; }
-.chips input:checked + span { background:var(--ink); border-color:var(--ink); color:var(--canvas); }
-.chips input:focus-visible + span { outline:2px solid var(--accent); outline-offset:2px; }
-.chips input:disabled { cursor:not-allowed; }
-.chips input:disabled + span { color:var(--line2); border-style:dashed; background:transparent; }
-.skip { position:absolute; left:1rem; top:-3rem; z-index:10; background:var(--ink); color:var(--canvas);
-  padding:.5rem .8rem; border-radius:6px; font-weight:500; text-decoration:none; }
+.wrap { max-width:1240px; margin:0 auto; padding:0 2.5rem; }
+.skip { position:absolute; left:1rem; top:-3rem; z-index:10; background:var(--ink); color:var(--paper);
+  padding:.5rem .8rem; font-weight:500; text-decoration:none; }
 .skip:focus { top:1rem; }
+
+/* masthead: name, lenses, issue date on one quiet line */
+.mast-top { display:flex; align-items:baseline; gap:2.5rem; padding-top:1.75rem; }
+.brand { font:600 1.0625rem/1 var(--sans); letter-spacing:-.01em; color:var(--ink); text-decoration:none; white-space:nowrap; }
+.issue { margin-left:auto; font-size:.8125rem; color:var(--ink3); white-space:nowrap; }
+.issue b { font-weight:500; color:var(--ink2); }
+nav.lenses { display:flex; gap:1.6rem; flex:1 1 auto; overflow-x:auto; min-width:0;
+  background:linear-gradient(to left, var(--paper) 30%, transparent) right / 2rem 100% no-repeat local,
+    radial-gradient(farthest-side at 100% 50%, var(--hair), transparent) right / .7rem 100% no-repeat scroll; }
+nav.lenses .grp { display:flex; gap:1.6rem; }
+nav.lenses a { font-size:.875rem; color:var(--ink3); text-decoration:none; padding-bottom:.4rem; white-space:nowrap;
+  box-shadow:inset 0 -1px 0 transparent; transition:color 150ms ease, box-shadow 150ms ease; }
+nav.lenses a:hover { color:var(--ink); }
+nav.lenses a[aria-current="page"] { color:var(--ink); box-shadow:inset 0 -1px 0 var(--ink); }
+
+main.wrap { padding-top:3.5rem; padding-bottom:5rem; }
 h1:focus { outline:none; }
-.side .note { padding:0 .55rem; margin:.6rem 0 0; }
-.built { margin-top:auto !important; color:var(--ink3) !important; font-size:.75rem !important; }
+h1, h2, h3 { margin:0; font-weight:500; letter-spacing:-.015em; text-wrap:balance; }
+h1 { font-size:2.125rem; line-height:1.12; letter-spacing:-.025em; }
+h2 { font-size:1.25rem; line-height:1.25; }
+.lede { font-size:.9375rem; line-height:1.55; color:var(--ink3); max-width:64ch; margin:.5rem 0 0; }
+.num { font-variant-numeric:tabular-nums; }
+.muted { color:var(--ink3); }
+.page-head { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:1rem 2rem; align-items:end; }
 
-main { padding:3.25rem 3rem 6rem; max-width:1180px; width:100%; }
+/* the four answers: one ruled row of figures */
+.krs { display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); border-top:1px solid var(--rule); margin-top:2.75rem; }
+.kr { display:block; padding:1.1rem 1.5rem .2rem; color:inherit; text-decoration:none; transition:background 150ms ease; }
+.kr:first-child { padding-left:0; }
+.kr + .kr { border-left:1px solid var(--hair); }
+a.kr .kq { transition:color 150ms ease; }
+a.kr:hover .kq { color:var(--ink); text-decoration:underline; text-underline-offset:3px; text-decoration-color:var(--hair); }
+.kq { font-size:.8125rem; color:var(--ink3); }
+.kv { font:300 3.5rem/1 var(--sans); letter-spacing:-.04em; white-space:nowrap; margin:.75rem 0 .85rem; }
+.kv small { font-size:.8125rem; font-weight:400; letter-spacing:0; color:var(--ink3); margin-left:.3rem; }
+.kv.alert { color:var(--red); }
+.kn { font-size:.8125rem; color:var(--ink3); margin-top:.3rem; }
+.kr .err-line { font-size:.875rem; color:var(--red); margin-top:.9rem; }
 
-/* type */
-h1, h2, h3 { margin:0; letter-spacing:-.02em; text-wrap:balance; font-weight:600; }
-h1 { font-size:1.75rem; line-height:1.2; }
-h2 { font-size:1.1875rem; margin:3rem 0 .3rem; }
-h3 { font-size:.9375rem; margin:0 0 .15rem; }
-.lede { color:var(--ink2); max-width:68ch; margin:.55rem 0 0; }
-.num { font-family:var(--mono); font-variant-numeric:tabular-nums; letter-spacing:-.01em; }
-.note { font-size:.8125rem; color:var(--ink2); margin:.2rem 0 0; }
-.meta { font-size:.8125rem; color:var(--ink2); }
-.meta b { font-weight:600; color:var(--ink); }
+/* state: a drawn circle plus the word; filled red only when a threshold is crossed */
+.st { display:inline-flex; align-items:center; gap:.5rem; font-size:.8125rem; font-weight:500; white-space:nowrap; }
+.st::before { content:""; width:.45rem; height:.45rem; border-radius:50%; box-shadow:inset 0 0 0 1.25px currentColor; flex:none; }
+.st.ok { color:var(--ink); }
+.st.warn { color:var(--ink); font-weight:600; } .st.warn::before { background:linear-gradient(90deg, currentColor 50%, transparent 50%); }
+.st.alert { color:var(--red); } .st.alert::before { background:currentColor; }
+.st.na { color:var(--ink3); }
 
-/* market rail: rows, not cards. comparison is the job. */
-.rail { margin-top:1.6rem; border:1px solid var(--line); border-radius:10px; background:var(--surface);
-  overflow:hidden; box-shadow:0 1px 2px rgba(26,25,23,.04), 0 8px 24px -16px rgba(26,25,23,.18); }
-.rail-head, .row { display:grid; grid-template-columns:1.6fr .62fr .72fr .78fr 190px;
-  gap:1rem; align-items:center; padding:.85rem 1.25rem; }
-.rail-head { padding-block:.7rem; background:#F4F2ED80; border-bottom:1px solid var(--line); }
-.rail-head .th { margin:0; }
-.row { border-top:1px solid var(--line); color:inherit; text-decoration:none; transition:background 160ms ease; }
-.rail-head + .row { border-top:none; }
-a.row:hover { background:#F4F2ED66; }
-.mk { font-weight:600; }
-.mk small { display:block; font-weight:400; color:var(--ink3); font-size:.8125rem; margin-top:.1rem; }
-.mk .flag { color:var(--warn); font-size:.75rem; }
-.z { font:500 1.375rem/1.2 var(--mono); font-variant-numeric:tabular-nums; letter-spacing:-.02em; }
-.z-sub { font-family:var(--mono); font-size:.6875rem; color:var(--ink3); margin-top:.15rem; }
-.row .err-inline { grid-column:2 / -1; color:#8E2B26; font-size:.8125rem; }
+/* exhibits */
+.ex { margin:0; scroll-margin-top:1.5rem; }
+.ex figcaption { display:block; }
+.ex .t { font-size:.9375rem; font-weight:500; line-height:1.35; }
+.ex .t .n { color:var(--ink3); font-weight:400; font-size:.8125rem; margin-right:.5rem; }
+.ex .sub { font-size:.875rem; line-height:1.5; color:var(--ink3); margin:.25rem 0 0; max-width:74ch; }
+.ex .plot { margin-top:1rem; }
+.ex .src { font-size:.75rem; line-height:1.5; color:var(--ink3); margin:.6rem 0 0; }
+.ex .src b { font-weight:500; color:var(--ink3); }
+.ex.flash { animation:flash 1.6s ease-out; }
+@keyframes flash { from { background:var(--hl); box-shadow:0 0 0 .8rem var(--hl); } to { background:transparent; box-shadow:0 0 0 .8rem transparent; } }
+.row2 { display:grid; grid-template-columns:1fr 1fr; gap:4rem; }
+.gap { margin-top:5.5rem; }
+.section { margin-top:6rem; padding-top:1.4rem; border-top:1px solid var(--hair); }
+.section > .page-head { margin-bottom:2rem; }
 
-/* state: a drawn mark plus the word. never colour alone. */
-.pill { display:inline-flex; align-items:center; gap:.42rem; padding:.2rem .55rem .2rem .45rem;
-  border-radius:999px; font-size:.75rem; font-weight:600; letter-spacing:.01em; white-space:nowrap; }
-.pill i { width:7px; height:7px; border-radius:50%; background:currentColor; flex:none; }
-.s-BUBBLE { color:var(--alert); background:#FBEDEC; }
-.s-elevated { color:var(--warn); background:#FBF3E4; }
-.s-normal { color:var(--ok); background:#EAF4EF; }
-.s-na { color:var(--ink3); background:#F1EFEA; }
+.fn { font:500 .7em/1 var(--sans); vertical-align:super; color:var(--ink3); background:none; border:0; padding:0 .1em; cursor:pointer; }
+.fn:hover { color:var(--ink); text-decoration:underline; }
+.notes { margin-top:5rem; padding-top:1rem; border-top:1px solid var(--hair); max-width:84ch; }
+.notes h2 { font-size:.8125rem; font-weight:500; color:var(--ink3); letter-spacing:0; }
+.notes ol { margin:.5rem 0 0; padding-left:1.4rem; font-size:.8125rem; line-height:1.55; color:var(--ink3); }
+.notes li { margin:.35rem 0; padding:.1rem .3rem; transition:background 600ms ease; }
+.notes li.on { background:var(--hl); }
 
-/* panels */
-.stats { display:grid; grid-template-columns:repeat(4,1fr); margin:1.6rem 0 1rem; border:1px solid var(--line);
-  border-radius:10px; background:var(--surface); }
-.stats > div { padding:1.05rem 1.25rem; display:flex; flex-direction:column; align-items:flex-start; gap:.3rem; }
-.stats > div + div { border-left:1px solid var(--line); }
-.stats .v { font:500 1.5rem/1.2 var(--mono); font-variant-numeric:tabular-nums; letter-spacing:-.02em; }
-.stats .th { margin:0; }
-.card { border:1px solid var(--line); border-radius:10px; background:var(--surface); padding:1.15rem 1.25rem; }
-.chart { border:1px solid var(--line); border-radius:10px; background:var(--surface); padding:.35rem; }
-.warn { border:1px solid #E7D3A8; background:#FCF6E9; color:#6B4A0C; border-radius:8px;
-  padding:.7rem .9rem; font-size:.8438rem; margin-top:.9rem; max-width:80ch; }
-.err { border:1px solid #EBC9C6; background:#FDF2F1; color:#8E2B26; border-radius:8px;
-  padding:.7rem .9rem; font-size:.8438rem; margin-top:.9rem; }
-.cols { display:grid; grid-template-columns:1fr 1fr; gap:2.5rem; margin-top:2.6rem; }
-.cols .note { margin-bottom:.9rem; }
-.comp-label { font-size:.8125rem; font-weight:500; color:var(--ink2); margin:.9rem 0 .3rem; }
-.comp-label:first-of-type { margin-top:0; }
-
-table { width:100%; border-collapse:collapse; font-family:var(--mono); font-size:.8125rem;
-  font-variant-numeric:tabular-nums; background:var(--surface); border:1px solid var(--line); border-radius:10px;
-  overflow:hidden; border-style:hidden; box-shadow:0 0 0 1px var(--line); }
-th { font:600 .6875rem/1 var(--ui); letter-spacing:.09em; text-transform:uppercase; color:var(--ink3);
-  text-align:right; padding:.7rem .9rem; background:#F4F2ED80; border-bottom:1px solid var(--line); }
-td { text-align:right; padding:.55rem .9rem; border-top:1px solid var(--line); }
-td small { display:block; font:500 .6875rem/1.3 var(--ui); color:var(--ink3); }
+/* tables: hairlines only */
+.tbl { overflow-x:auto; margin-top:1rem;
+  background:linear-gradient(to right, var(--paper) 30%, transparent) left / 2rem 100% no-repeat local,
+    linear-gradient(to left, var(--paper) 30%, transparent) right / 2rem 100% no-repeat local,
+    radial-gradient(farthest-side at 0 50%, var(--hair), transparent) left / .7rem 100% no-repeat scroll,
+    radial-gradient(farthest-side at 100% 50%, var(--hair), transparent) right / .7rem 100% no-repeat scroll; }
+.tbl.vr td { white-space:normal; vertical-align:top; }
+.tbl.vr td:last-child { white-space:nowrap; }
+table { width:100%; border-collapse:collapse; font-size:.875rem; }
+th { font-size:.75rem; font-weight:400; color:var(--ink3); text-align:right; padding:0 .7rem .6rem; vertical-align:bottom; white-space:nowrap; }
+td { text-align:right; padding:.7rem .7rem; border-top:1px solid var(--hair); white-space:nowrap; }
+tr:last-child td { border-bottom:1px solid var(--hair); }
+th:first-child, td:first-child { text-align:left; padding-left:0; }
+th:last-child, td:last-child { padding-right:0; }
+td.l, th.l { text-align:left; }
+td small { display:block; font-size:.75rem; color:var(--ink3); white-space:normal; }
+td.wrap-ok { white-space:normal; min-width:16rem; }
 tr.open td { color:var(--ink3); }
-th:first-child, td:first-child { text-align:left; }
-tr:first-child td { border-top:0; }
+tr.lnk { cursor:pointer; }
+tr.lnk:hover td { background:var(--paper2); }
+td .big { font-size:1.375rem; font-weight:300; letter-spacing:-.025em; }
+td .big.alert { color:var(--red); }
+td .big.warn { font-weight:500; }
+.tbl-note { font-size:.8125rem; line-height:1.45; color:var(--ink3); margin:.6rem 0 0; }
 
-/* methodology: long-form reading */
+/* controls */
+.seg { display:inline-flex; flex-wrap:wrap; gap:.15rem; }
+.seg label { position:relative; }
+.seg input { position:absolute; inset:0; opacity:0; margin:0; cursor:pointer; }
+.seg span { display:block; padding:.3rem .6rem; font-size:.8125rem; color:var(--ink3);
+  box-shadow:inset 0 -1px 0 transparent; transition:color 150ms ease, box-shadow 150ms ease; }
+.seg input:hover + span { color:var(--ink); }
+.seg input:checked + span { color:var(--ink); box-shadow:inset 0 -1px 0 var(--ink); }
+.seg input:focus-visible + span { outline:1.5px solid var(--ink); outline-offset:1px; }
+.seg input:disabled { cursor:not-allowed; }
+.seg input:disabled + span { color:var(--hair); }
+.ctl { display:flex; flex-direction:column; gap:.3rem; align-items:flex-end; }
+.ctl .lab { font-size:.75rem; color:var(--ink3); }
+
+.callout { font-size:.875rem; line-height:1.5; color:var(--ink); background:var(--paper2); padding:.8rem 1rem;
+  margin-top:1.2rem; max-width:84ch; }
+.callout.err { background:var(--red-bg); }
+.callout b { font-weight:600; }
+
 .prose { max-width:68ch; }
-.prose h2 { margin-top:2.6rem; }
-.prose p, .prose li { color:var(--ink); }
+.prose h2 { margin-top:2.8rem; font-size:1.25rem; }
+.prose h3 { margin-top:2rem; font-size:1rem; font-weight:500; }
+.prose p, .prose li { font-size:1rem; line-height:1.65; }
+.prose b { font-weight:600; }
 .prose ol, .prose ul { padding-left:1.25rem; }
 .prose li { margin:.45rem 0; }
 .prose li::marker { color:var(--ink3); }
-.prose .coda { margin-top:2.6rem; padding-top:1.2rem; border-top:1px solid var(--line); color:var(--ink2); }
+.prose .coda { margin-top:2.8rem; padding-top:1rem; border-top:1px solid var(--hair); color:var(--ink3); }
+.part { margin-top:4rem; padding-top:1rem; border-top:1px solid var(--hair); }
 
-.loading { color:var(--ink3); }
+.foot { background:linear-gradient(var(--hair), var(--hair)) top center / calc(100% - 5rem) 1px no-repeat;
+  padding-top:1.1rem; padding-bottom:2.5rem; font-size:.75rem; color:var(--ink3);
+  display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap; }
 
-/* responsive: structural, not fluid type */
-@media (max-width:900px) {
-  .shell { grid-template-columns:minmax(0,1fr); }
-  .side { min-width:0; }
-  .side { position:static; height:auto; border-right:0; border-bottom:1px solid var(--line);
-    padding:1rem 1rem .9rem; gap:.9rem; }
-  nav { flex-direction:row; overflow-x:auto; margin:0 -1rem; padding:0 1rem; }
-  nav hr { display:none; }
-  .win { padding:0; }
-  .chips { display:flex; overflow-x:auto; margin:0 -1rem; padding:0 1rem 2px; }
-  .chips label { flex:none; }
-  .chips label.wide { grid-column:auto; }
-  .chips span { padding:.45rem .6rem; }
-  .side .note { padding:0; margin-top:.5rem; }
-  .brand { padding:0; }
-  .built { display:none; }
-  main { padding:2rem 1rem 4rem; }
-  h1 { font-size:1.5rem; }
-  .rail-head { display:none; }
-  .row { grid-template-columns:1fr auto; gap:.5rem .9rem; padding:1rem 1.05rem; }
-  .row > :nth-child(2) { display:none; }
-  .row > :nth-child(3) { grid-column:1; }
-  .row > :nth-child(4) { grid-column:2; text-align:right; }
-  .row > :nth-child(5) { grid-column:1 / -1; }
-  .row .err-inline { grid-column:1 / -1; }
-  .stats { grid-template-columns:1fr 1fr; }
-  .stats > div:nth-child(3) { border-left:0; }
-  .stats > div:nth-child(n+3) { border-top:1px solid var(--line); }
-  .cols { grid-template-columns:1fr; gap:2.2rem; }
+.skel { background:linear-gradient(90deg, var(--paper2), var(--grid), var(--paper2)); background-size:200% 100%;
+  animation:sk 1.4s linear infinite; height:1rem; margin:.6rem 0; }
+@keyframes sk { to { background-position:-200% 0; } }
+
+@media (max-width:1000px) {
+  .row2 { grid-template-columns:minmax(0,1fr); gap:4rem; }
+  .mast-top { flex-wrap:wrap; gap:.9rem 2rem; }
+  nav.lenses { order:3; flex-basis:100%; }
+  .krs { grid-template-columns:1fr 1fr; }
+  .kr:nth-child(3) { padding-left:0; border-left:0; }
+  .kr:nth-child(n+3) { border-top:1px solid var(--hair); }
 }
-@media (prefers-reduced-motion:reduce) { * { transition:none !important; } }
+@media (max-width:640px) {
+  .wrap { padding:0 1rem; }
+  .foot { background-size:calc(100% - 2rem) 1px; }
+  .mast-top { padding-top:1.1rem; }
+  main.wrap { padding-top:2.2rem; }
+  h1 { font-size:1.75rem; }
+  .krs { margin-top:1.8rem; }
+  .kr { padding:.9rem .9rem .2rem; }
+  .kv { font-size:2.25rem; margin:.55rem 0 .6rem; }
+  .st { white-space:normal; align-items:baseline; }
+  .page-head { grid-template-columns:minmax(0,1fr); }
+  .ctl { align-items:flex-start; }
+  .gap { margin-top:4rem; }
+  .section { margin-top:4.5rem; }
+}
+@media (prefers-reduced-motion:reduce) { *, *::before { transition:none !important; animation:none !important; } }
 </style>
 </head>
 <body>
 <a class="skip" href="#/" id="skip">Skip to content</a>
-<div class="shell">
-  <aside class="side">
-    <a class="brand" href="#/"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><polyline points="1,12 5,9 8,10 11,4 15,6" fill="none" stroke="#534AB7" stroke-width="2" stroke-linejoin="round"/></svg>Bubble Methodology</a>
-    <nav id="nav" aria-label="Views"></nav>
-    <fieldset class="win">
-      <legend>Trend window</legend>
-      <div class="chips" id="chips"></div>
-      <p class="note" id="winnote"></p>
-    </fieldset>
-    <p class="note built" id="built"></p>
-  </aside>
-  <main id="main"><p class="loading">Loading readings&hellip;</p></main>
-</div>
+<header class="mast wrap">
+  <div class="mast-top">
+    <a class="brand" href="#/" id="brand">Market Readings</a>
+    <nav class="lenses" id="nav" aria-label="Lenses"></nav>
+    <span class="issue" id="issue">&nbsp;</span>
+  </div>
+</header>
+<main id="main" class="wrap" tabindex="-1"><div class="skel" style="width:40%"></div><div class="skel" style="width:70%"></div></main>
+<footer class="foot wrap" id="foot"></footer>
 <script>
+const NAME = "Market Readings";           // working name: change it here only
 const WINDOWS = [12, 24, 36, 60, 84, 120, 240, 360];
-const C = { ink:"#1A1917", ink2:"#57534B", ink3:"#6B675E", surface:"#FFFFFF", panel:"#F4F2ED",
-  line:"#E5E1D8", line2:"#D5D0C4" };
-// chart marks, unchanged from the notebook figures
-const M = { price:"#534AB7", trend:"#96918A", band:"#BA7517", fill:"rgba(250,199,117,.20)",
-  bubble:"#E24B4A", z:"#1D9E75", grid:"#EDEAE3" };
+const ORDER = ["turkey", "new_york", "london", "asia"];   // Turkey first: the only market with a daily lens
+const SERIES = { E:"XU100 (TRY)", USD:"XU100 (USD)", F:"USDTRY (long USD)" };
 const CFG = { displayModeBar:false, responsive:true };
-let D;
+let V = null, R = null, VERR = null, RERR = null, NOTES = [], SYNC = [];
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const wlabel = w => w >= 12 ? `${w / 12}y` : `${w}m`;
-const sign = x => (x >= 0 ? "+" : "−") + Math.abs(x).toFixed(2);
-const monthName = ym => new Date(ym + "-15").toLocaleString("en-US", { month:"short", year:"numeric" });
 const fin = x => x !== null && x !== undefined && Number.isFinite(x);
 const lastFin = a => { for (let i = a.length - 1; i >= 0; i--) if (fin(a[i])) return a[i]; return NaN; };
+const minus = s => s.replace(/^-/, "−");
+const sign = x => (x >= 0 ? "+" : "−") + Math.abs(x).toFixed(2);
+const pc = (x, nd = 2) => fin(x) ? minus(x.toFixed(nd)) + "%" : "—";
+const wlabel = w => w >= 12 ? `${w / 12}y` : `${w}m`;
+const monthName = ym => new Date(ym + "-15").toLocaleString("en-GB", { month:"short", year:"numeric" });
+const dayName = (d, wd = false) => new Date(d + "T12:00:00Z").toLocaleDateString("en-GB",
+  { ...(wd ? { weekday:"short" } : {}), day:"numeric", month:"short", year:"numeric", timeZone:"UTC" });
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 
-function state(z, crit) {   // mirrors data.state: 'elevated' is within 1 of the threshold
+// ---------------------------------------------------------------- valuation model (mirrors build.py / data.py)
+function state(z, crit) {   // 'elevated' is within 1 of the threshold
   if (!fin(z)) return "n/a";
-  return z > crit ? "BUBBLE" : z > crit - 1 ? "elevated" : "normal";
+  return z > crit ? "bubble" : z > crit - 1 ? "elevated" : "normal";
 }
 const band = x => !fin(x) ? "n/a" : x < -1 ? "tight" : x < 1 ? "neutral" : "loose";
-const pill = s => `<span class="pill s-${s === "n/a" ? "na" : s}"><i></i>${s === "BUBBLE" ? "bubble" : s}</span>`;
-const zColor = s => ({ BUBBLE:"var(--alert)", elevated:"var(--warn)" })[s] || "var(--ink)";
-
-// -> {w, crit, z, trend, upper, episodes} at the chosen window, or null if history is too short
-function reading(m, win) {
-  const w = win || m.window, r = m.windows[w];
-  return r ? { w, ...r } : null;
+const stCls = s => ({ bubble:"alert", elevated:"warn", normal:"ok" })[s] || "na";
+const st = (s, word) => `<span class="st ${stCls(s)}">${esc(word || s)}</span>`;
+function reading(m, win) { const w = win || m.window, r = m.windows[w]; return r ? { w, ...r } : null; }
+function critFor(w) {
+  for (const m of Object.values(V.markets)) if (m.windows && m.windows[w]) return m.windows[w].crit;
+  return NaN;
 }
 
+// ---------------------------------------------------------------- risk readings (from risk.json)
+const H = () => R.hist;
+const nSess = () => R.hist.date.length;
+function breaches(k, a, from = 0, to = nSess()) {
+  const r = H()[`r_${k}`], v = H()[`var${a === "0.01" ? 1 : 25}_${k}`];
+  let n = 0, hit = 0;
+  for (let i = from; i < to; i++) if (fin(r[i]) && fin(v[i])) { n++; if (r[i] <= v[i]) hit++; }
+  return { n, hit };
+}
+function periodRange(code) {
+  const p = H().period; const a = p.indexOf(code), b = p.lastIndexOf(code);
+  return a < 0 ? null : [a, b + 1];
+}
+function riskAge() {   // calendar days since the last session in risk.json
+  return Math.round((Date.now() - Date.parse(R.asof + "T18:00:00+03:00")) / 864e5);
+}
+
+// ---------------------------------------------------------------- routing
 function route() {
   const [path, q] = location.hash.replace(/^#\/?/, "").split("?");
-  const w = Number(new URLSearchParams(q).get("w"));
-  return { page: path || "", win: WINDOWS.includes(w) ? w : null };
+  const p = new URLSearchParams(q), w = Number(p.get("w"));
+  return { page:path || "", win:WINDOWS.includes(w) ? w : null, s:p.get("s") };
 }
-function href(page, win) { return `#/${page}${win ? `?w=${win}` : ""}`; }
+const href = (page, win) => `#/${page}${win ? `?w=${win}` : ""}`;
 
-// ---------------------------------------------------------------- chrome
-// Built once: re-rendering the controls on every route change would drop keyboard
-// focus out of the window radios after each arrow-key step.
-function buildSidebar() {
-  const views = [["", "Overview"], ...Object.values(D.markets).map(m => [m.key, m.index]), ["method", "Methodology"]];
-  $("#nav").innerHTML = views.map(([k, label], i) =>
-    (i === views.length - 1 ? "<hr>" : "") + `<a data-page="${k}">${esc(label)}</a>`).join("");
-  $("#chips").innerHTML = [null, ...WINDOWS].map(w =>
-    `<label${w ? "" : ' class="wide"'}><input type="radio" name="w" value="${w || ""}">` +
-    `<span>${w ? wlabel(w) : "Per-market default"}</span></label>`).join("");
+function nav({ page, win }) {
+  const short = { "Nasdaq Composite":"Nasdaq" };
+  const vm = ORDER.filter(k => V && V.markets[k]).map(k => [k, short[V.markets[k].index] || V.markets[k].index]);
+  const g = (label, items) => `<div class="grp" aria-label="${label || "Pages"}">` +
+    items.map(([k, t]) => `<a href="${href(k, V && V.markets[k] ? win : null)}"${k === page ? ' aria-current="page"' : ""}>${esc(t)}</a>`).join("") + "</div>";
+  $("#nav").innerHTML = g("", [["", "Overview"]]) + g("Risk, daily", [["risk", "XU100 and lira"]]) +
+    (vm.length ? g("Valuation, monthly", vm) : "") + g("", [["method", "Methodology"]]);
 }
-function sidebar({ page, win }) {
-  document.querySelectorAll("#nav a").forEach(a => {
-    a.href = href(a.dataset.page, win);
-    if (a.dataset.page === page) a.setAttribute("aria-current", "page");
-    else a.removeAttribute("aria-current");
-  });
-  const m = D.markets[page];
-  document.querySelectorAll("#chips input").forEach(i => {
-    const w = Number(i.value) || null;
-    i.checked = w === win;
-    // a window longer than this market's history has no reading: say so, don't offer it
-    const none = !!(w && m && m.windows && !m.windows[w]);
-    i.disabled = none && w !== win;
-    i.parentElement.title = none ? `${m.index} has too little history for a ${wlabel(w)} window` : "";
-  });
-  $("#winnote").innerHTML = win
-    ? `Threshold at ${wlabel(win)}: <b class="num">${critFor(win)}</b>`
-    : "Nasdaq <b>7y</b>, others <b>10y</b> &mdash; see Methodology.";
+
+// ---------------------------------------------------------------- exhibit scaffolding
+function fn(text) {   // a footnote: numbered per page, listed under Notes
+  NOTES.push(text);
+  return `<button type="button" class="fn" data-note="${NOTES.length}" aria-label="Note ${NOTES.length}">${NOTES.length}</button>`;
 }
-function critFor(w) {
-  for (const m of Object.values(D.markets)) if (m.windows && m.windows[w]) return m.windows[w].crit.toFixed(2);
-  return "—";
+function exhibit(n, id, title, sub, body, src) {
+  return `<figure class="ex" id="ex-${id}"><figcaption><div class="t"><span class="n">Exhibit ${n}</span>${title}</div>` +
+    (sub ? `<p class="sub">${sub}</p>` : "") + `</figcaption>${body}` +
+    (src ? `<p class="src">${src}</p>` : "") + "</figure>";
 }
-function staleBanner() {
-  const s = Object.keys(D.stale || {});
-  return s.length ? `<div class="warn"><b>Serving cached data.</b> Refresh failed for ${s.map(k => `<code>${esc(k)}</code>`).join(", ")}.</div>` : "";
+const plot = (id, label) => `<div class="plot" role="img" aria-label="${esc(label)}"><div id="${id}"></div></div>`;
+function notesBlock() {
+  return NOTES.length ? `<section class="notes" aria-label="Notes"><h2>Notes</h2><ol>` +
+    NOTES.map((t, i) => `<li id="note-${i + 1}">${t}</li>`).join("") + "</ol></section>" : "";
+}
+function riskStale() {
+  if (!R) return "";
+  const age = riskAge();
+  return age > 4 ? `<div class="callout"><b>Risk readings are ${age} days old.</b> The last session in the feed is ` +
+    `${dayName(R.asof)}; the daily run has not published since. Numbers below are as of that close.</div>` : "";
+}
+function valStale() {
+  const s = Object.keys((V && V.stale) || {});
+  return s.length ? `<div class="callout"><b>Valuation is serving cached data.</b> Refresh failed for ` +
+    `${s.map(k => `<code>${esc(k)}</code>`).join(", ")}.</div>` : "";
 }
 
 // ---------------------------------------------------------------- charts
-function layout(height, legend = true, extra = {}) {
+function C() {
+  return { ink:css("--ink"), ink2:css("--ink2"), ink3:css("--ink3"), paper:css("--paper"), hair:css("--hair"),
+    rule:css("--rule"), series:css("--ink"), bar:css("--bar"), red:css("--red"), grid:css("--grid") };
+}
+function layout(height, extra = {}) {
+  const c = C();
   return {
-    height, paper_bgcolor:C.surface, plot_bgcolor:C.surface,
-    font:{ family:"Inter, sans-serif", size:12, color:C.ink2 },
-    margin:{ l:44, r:14, t:legend ? 40 : 10, b:28 },
-    hovermode:"x unified",
-    hoverlabel:{ bgcolor:C.surface, bordercolor:C.line, font:{ family:"IBM Plex Mono, monospace", size:11.5, color:C.ink } },
-    showlegend:legend,
-    legend:{ traceorder:"normal", orientation:"h", y:1.02, x:0, yanchor:"bottom", font:{ size:11.5 }, bgcolor:"rgba(0,0,0,0)" },
-    xaxis:{ type:"date", showgrid:false, showline:true, linecolor:C.line, ticks:"outside", tickcolor:C.line,
-      ticklen:4, tickfont:{ size:11, color:C.ink3 } },
-    yaxis:{ showgrid:true, gridcolor:M.grid, zeroline:false, tickfont:{ size:11, color:C.ink3 },
-      title:{ font:{ size:11, color:C.ink3 } } },
+    height, paper_bgcolor:c.paper, plot_bgcolor:c.paper,
+    font:{ family:"Public Sans, sans-serif", size:12, color:c.ink3 },
+    margin:{ l:46, r:12, t:12, b:30 }, hovermode:"x unified",
+    hoverlabel:{ bgcolor:c.paper, bordercolor:c.rule, font:{ family:"Public Sans, sans-serif", size:12, color:c.ink } },
+    showlegend:false,
+    legend:{ orientation:"h", y:1.0, x:0, yanchor:"bottom", font:{ size:12, color:c.ink2 }, bgcolor:"rgba(0,0,0,0)" },
+    xaxis:{ type:"date", showgrid:false, showline:true, linecolor:c.rule, ticks:"outside", tickcolor:c.rule, ticklen:4,
+      tickfont:{ size:11, color:c.ink3 }, spikemode:"across", spikecolor:c.ink3, spikethickness:1, spikedash:"solid" },
+    yaxis:{ showgrid:true, gridcolor:c.grid, zeroline:false, tickfont:{ size:11, color:c.ink3 }, ticksuffix:"",
+      title:{ font:{ size:11, color:c.ink3 } } },
     ...extra,
   };
 }
-const hline = (y, yref, color, dash) => ({ type:"line", xref:"paper", x0:0, x1:1, yref, y0:y, y1:y,
+const hline = (y, color, dash, yref = "y") => ({ type:"line", xref:"paper", x0:0, x1:1, yref, y0:y, y1:y,
   line:{ color, width:1, dash } });
+function closeRule(x, label) {   // the one "last close" rule every daily chart shares
+  const c = C();
+  return { shape:{ type:"line", xref:"x", x0:x, x1:x, yref:"paper", y0:0, y1:1, line:{ color:c.ink, width:1 } },
+    ann:{ xref:"x", x:x, yref:"paper", y:1, xanchor:"right", yanchor:"top", showarrow:false, text:label,
+      font:{ size:11, color:c.ink }, bgcolor:c.paper, borderpad:2 } };
+}
+function periodMarks(x0) {   // holdout span (seen once) and the live start, on every daily chart
+  const c = C(), h = H(), ho = periodRange("h"), shapes = [], anns = [];
+  // a window lying wholly inside holdout+live gets no fill (it would grey the whole plot); the caption says so
+  if (ho && h.date[ho[0]] > x0) {
+    const a = h.date[ho[0]];
+    shapes.push({ type:"rect", xref:"x", x0:a, x1:h.date[ho[1] - 1], yref:"paper", y0:0, y1:1, fillcolor:c.grid,
+      opacity:.9, line:{ width:0 }, layer:"below" });
+    anns.push({ xref:"x", x:a, yref:"paper", y:1, xanchor:"left", yanchor:"top", showarrow:false,
+      text:"holdout, seen once", font:{ size:11, color:c.ink2 }, bgcolor:c.paper, borderpad:2 });
+  }
+  shapes.push({ type:"line", xref:"x", x0:R.live0, x1:R.live0, yref:"paper", y0:0, y1:1, line:{ color:c.ink3, width:1, dash:"dash" } });
+  anns.push({ xref:"x", x:R.live0, yref:"paper", y:0, xanchor:"right", yanchor:"bottom", showarrow:false,
+    text:"live", font:{ size:11, color:c.ink2 }, bgcolor:c.paper, borderpad:2 });
+  return { shapes, anns };
+}
+function runs(flags, dates) {   // consecutive on-runs -> [start, end] date pairs
+  const out = []; let s = null;
+  flags.forEach((f, i) => {
+    if (f && s === null) s = i;
+    if ((!f || i === flags.length - 1) && s !== null) { out.push([dates[s], dates[f ? i : i - 1]]); s = null; }
+  });
+  return out;
+}
+function draw(el, traces, L, sync = false) {
+  Plotly.newPlot(el, traces, L, CFG);
+  if (sync) SYNC.push(el);
+}
+// Signature interaction: one hover date across every daily exhibit on the page.
+let syncing = false;
+function wireSync() {
+  SYNC.forEach(el => {
+    el.on("plotly_hover", ev => {
+      if (syncing) return;
+      syncing = true;
+      const x = ev.points[0].x;
+      SYNC.forEach(o => { if (o !== el) try { Plotly.Fx.hover(o, { xval:x }, "xy"); } catch (e) {} });
+      syncing = false;
+    });
+    el.on("plotly_unhover", () => {
+      if (syncing) return;
+      syncing = true; SYNC.forEach(o => { if (o !== el) try { Plotly.Fx.unhover(o); } catch (e) {} }); syncing = false;
+    });
+  });
+}
 
+function stressChart(el, from, height, opts = {}) {
+  const c = C(), h = H(), x = h.date.slice(from), y = h.pct.slice(from).map(v => fin(v) ? 100 * v : null);
+  const flagged = runs(h.flag.slice(from), x);
+  const cr = closeRule(R.asof, "last close");
+  const shapes = [hline(100 * R.tau, c.ink, "dot"), cr.shape,
+    ...flagged.map(([a, b]) => ({ type:"rect", xref:"x", x0:a, x1:b, yref:"paper", y0:0, y1:1, fillcolor:c.red,
+      opacity:.24, line:{ width:0 }, layer:"below" }))];
+  const anns = [cr.ann, { xref:"paper", x:0, y:100 * R.tau, xanchor:"left", yanchor:"bottom", showarrow:false,
+    text:`flag threshold ${(100 * R.tau).toFixed(1)}, ${R.m} sessions`, font:{ size:11, color:c.ink2 }, bgcolor:c.paper, borderpad:2 }];
+  const pm = periodMarks(x[0]);
+  shapes.unshift(...pm.shapes); anns.push(...pm.anns);
+  const ev = (R.events || []).filter(e => e.onset >= x[0]);
+  const traces = [{ x, y, name:"percentile", line:{ color:c.ink, width:1.1 }, hovertemplate:"%{y:.1f}" }];
+  if (ev.length) traces.push({ x:ev.map(e => e.onset), y:ev.map(() => 103), mode:"markers", name:"event",
+    marker:{ symbol:"triangle-down", size:7, color:c.ink2 }, text:ev.map(e => e.event), hovertemplate:"%{text}<extra></extra>" });
+  const L = layout(height, { shapes, annotations:anns });
+  L.yaxis = { ...L.yaxis, range:[0, 106], tickvals:[0, 25, 50, 75, 100], title:{ text:"percentile", font:{ size:11, color:c.ink3 } } };
+  L.xaxis.range = [x[0], nextDay(R.asof, opts.pad || 6)];
+  if (opts.selector) L.xaxis.rangeselector = selector([["1y", 1], ["5y", 5]]);
+  draw(el, traces, L, true);
+}
+function selector(list) {
+  const c = C();
+  return { x:1, xanchor:"right", y:1.02, yanchor:"bottom", bgcolor:c.paper, activecolor:c.hair, bordercolor:c.rule,
+    borderwidth:1, font:{ size:11, color:c.ink2 },
+    buttons:[...list.map(([label, count]) => ({ step:"year", count, label })), { step:"all", label:"all" }] };
+}
+function nextDay(d, n) { const t = new Date(d + "T12:00:00Z"); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10); }
+
+function varChart(el, k, from, height) {
+  const c = C(), h = H(), x = h.date.slice(from), r = h[`r_${k}`].slice(from), v = h[`var1_${k}`].slice(from);
+  const hit = r.map((y, i) => fin(y) && fin(v[i]) && y <= v[i]);
+  const nx = nextDay(R.asof, 1), f = R.next.one[k]["0.01"].var;
+  const cr = closeRule(R.asof, "last close");
+  const bx = x.filter((_, i) => hit[i]), by = r.filter((_, i) => hit[i]);
+  const traces = [
+    { x, y:r, type:"bar", name:"realised return", marker:{ color:c.bar, line:{ width:0 } }, hovertemplate:"%{y:.2f}%" },
+    { x:bx, y:by, mode:"markers", name:"breach", marker:{ color:c.red, size:x.length > 600 ? 5 : 7, line:{ color:c.paper, width:1 } },
+      hovertemplate:"breach %{y:.2f}%<extra></extra>" },
+    { x, y:v, name:"1% VaR", line:{ color:c.ink, width:1.2, shape:"hv" }, hovertemplate:"%{y:.2f}%" },
+    { x:[nx], y:[f], mode:"markers+text", name:"next session", marker:{ color:c.ink, size:8, symbol:"diamond" },
+      text:[`next ${pc(f)}`], textposition:"bottom left", textfont:{ size:11, color:c.ink }, hovertemplate:"%{y:.2f}%" },
+  ];
+  const pm = periodMarks(x[0]);
+  const L = layout(height, { shapes:[...pm.shapes, cr.shape, hline(0, c.hair, "solid")], annotations:[...pm.anns, cr.ann],
+    bargap:x.length > 600 ? .4 : .15 });
+  L.yaxis = { ...L.yaxis, ticksuffix:"%", title:{ text:"log return", font:{ size:11, color:c.ink3 } } };
+  L.xaxis.range = [x[0], nextDay(R.asof, 8)];
+  draw(el, traces, L, true);
+}
+
+function jumpChart(el, from, height) {
+  const c = C(), h = H(), x = h.date.slice(from), cr = closeRule(R.asof, "last close");
+  const lab = { E:"equity-only jump", F:"FX-only jump", C:"co-jump" }, col = { E:c.ink, F:c.ink3, C:c.ink2 };
+  const traces = ["E", "F", "C"].map((k, i) => ({ x, y:h[`pj_${k}`].slice(from).map(v => fin(v) ? 100 * v : null),
+    yaxis:i ? `y${i + 1}` : "y", type:"bar", name:lab[k], marker:{ color:col[k] }, hovertemplate:"%{y:.1f}%" }));
+  const rule = d => ({ type:"line", xref:"x", x0:R.asof, x1:R.asof, yref:d, y0:0, y1:1, line:{ color:c.ink, width:1 } });
+  const L = layout(height, { shapes:[rule("y domain"), rule("y2 domain"), rule("y3 domain")], annotations:[cr.ann], bargap:0 });
+  const ax = (d, t) => ({ ...L.yaxis, domain:d, range:[0, 100], tickvals:[0, 50, 100], ticksuffix:"%",
+    title:{ text:t, font:{ size:11, color:c.ink3 } } });
+  L.yaxis = ax([.69, 1], "equity"); L.yaxis2 = ax([.345, .655], "FX"); L.yaxis3 = ax([0, .31], "co-jump");
+  L.xaxis = { ...L.xaxis, anchor:"y3", range:[x[0], nextDay(R.asof, 6)] };
+  draw(el, traces, L, true);
+}
+
+function fxChart(el, from, height) {
+  const c = C(), h = H(), x = h.date.slice(from), cr = closeRule(R.asof, "last close");
+  const L = layout(height, { shapes:[cr.shape], annotations:[cr.ann] });
+  L.yaxis = { ...L.yaxis, ticksuffix:"%", rangemode:"tozero", title:{ text:"share of variance", font:{ size:11, color:c.ink3 } } };
+  L.xaxis.range = [x[0], nextDay(R.asof, 6)];
+  L.xaxis.rangeselector = selector([["2y", 2], ["5y", 5]]);
+  draw(el, [{ x, y:h.fx_share.slice(from).map(v => fin(v) ? 100 * v : null), line:{ color:c.series, width:1.2 },
+    fill:"tozeroy", fillcolor:c.grid, hovertemplate:"%{y:.1f}%" }], L, true);
+}
+
+// valuation: the notebook's figure, restyled
 function episodes(months, z, crit) {
   const out = []; let s = null;
   months.forEach((t, i) => {
@@ -308,233 +476,397 @@ function episodes(months, z, crit) {
   if (s !== null) out.push([s, months[months.length - 1]]);
   return out;
 }
-
 function mainChart(el, m, r) {
-  const x = m.months, h = "%{y:.2f}";
+  const c = C(), x = m.months, h = "%{y:.2f}";
   const traces = [
-    { x, y:r.trend, name:"trend", legendrank:2, line:{ color:M.trend, width:1 }, hovertemplate:h },
-    { x, y:r.upper, name:`+${r.crit.toFixed(2)}σ`, legendrank:3, line:{ color:M.band, width:1, dash:"dot" },
-      fill:"tonexty", fillcolor:M.fill, hovertemplate:h },
-    { x, y:m.p, name:"log real price", legendrank:1, line:{ color:M.price, width:1.7 }, hovertemplate:h },
-    { x, y:r.z, name:"z", legendrank:4, yaxis:"y2", line:{ color:M.z, width:1.2 }, hovertemplate:h },
+    { x, y:r.trend, name:"trend", line:{ color:c.ink3, width:1 }, hovertemplate:h },
+    { x, y:r.upper, name:`trend + ${r.crit.toFixed(2)} sd`, line:{ color:c.ink2, width:1, dash:"dot" },
+      fill:"tonexty", fillcolor:c.grid, hovertemplate:h },
+    { x, y:m.p, name:"log real price", line:{ color:c.ink, width:1.5 }, hovertemplate:h },
+    { x, y:r.z, name:"z", yaxis:"y2", line:{ color:c.ink2, width:1.1 }, hovertemplate:h },
   ];
   const first = x[r.z.findIndex(fin)];
-  const shapes = [hline(r.crit, "y2", M.band, "dot"), hline(0, "y2", C.line2),
+  const shapes = [hline(r.crit, c.ink, "dot", "y2"), hline(0, c.hair, "solid", "y2"),
     ...episodes(x, r.z, r.crit).map(([a, b]) => ({ type:"rect", xref:"x", x0:a, x1:b, yref:"paper", y0:0, y1:1,
-      fillcolor:M.bubble, opacity:.11, line:{ width:0 }, layer:"below" }))];
-  const L = layout(580, true, {
-    yaxis:{ ...layout().yaxis, domain:[.3, 1], title:{ text:`log real price (${m.ccy}, CPI-deflated)`, font:{ size:11, color:C.ink3 } } },
-    yaxis2:{ ...layout().yaxis, domain:[0, .24], title:{ text:"z", font:{ size:11, color:C.ink3 } } },
-    shapes,
+      fillcolor:c.red, opacity:.13, line:{ width:0 }, layer:"below" }))];
+  const L = layout(560, { showlegend:true, shapes, margin:{ l:46, r:12, t:34, b:30 },
     annotations:[{ xref:"paper", yref:"y2 domain", x:0, y:1, xanchor:"left", yanchor:"bottom", showarrow:false,
-      text:`${wlabel(r.w)} window · threshold ${r.crit.toFixed(2)}`, font:{ size:11, color:C.ink3 },
-      bgcolor:"rgba(255,255,255,.85)" }],
-  });
-  L.xaxis = { ...L.xaxis, anchor:"y2", range:[first, x[x.length - 1]],
-    rangeselector:{ x:1, xanchor:"right", y:1.02, yanchor:"bottom", bgcolor:C.panel, activecolor:C.line2,
-      font:{ size:11, color:C.ink2 },
-      buttons:[{ step:"year", count:10, label:"10y" }, { step:"year", count:20, label:"20y" }, { step:"all", label:"all" }] } };
-  Plotly.newPlot(el, traces, L, CFG);
+      text:`${wlabel(r.w)} window, threshold ${r.crit.toFixed(2)}`, font:{ size:11, color:c.ink2 }, bgcolor:c.paper }] });
+  L.yaxis = { ...L.yaxis, domain:[.32, 1], title:{ text:`log real price (${m.ccy}, CPI-deflated)`, font:{ size:11, color:c.ink3 } } };
+  L.yaxis2 = { ...layout(1).yaxis, domain:[0, .25], title:{ text:"z", font:{ size:11, color:c.ink3 } } };
+  L.xaxis = { ...L.xaxis, anchor:"y2", range:[first, x[x.length - 1]], rangeselector:selector([["10y", 10], ["20y", 20]]) };
+  draw(el, traces, L);
 }
-
-// The part of a z line above its own threshold, cut exactly at the crossing, so it can
-// be redrawn in bubble red. Everything else is null (a gap), like the sparklines' clip.
-function aboveOnly(x, z, crit) {
+function aboveOnly(x, z, crit) {   // the stretch of a z line above its threshold, cut at the crossing
   const t = x.map(d => Date.parse(d + "-01")), X = [], Y = [];
   const iso = ms => new Date(ms).toISOString().slice(0, 10);
   for (let i = 0; i < z.length; i++) {
     const a = z[i - 1], b = z[i], up = fin(b) && b > crit;
-    if (i && fin(a) && fin(b) && (a > crit) !== up) {       // crossed between i-1 and i
-      X.push(iso(t[i - 1] + (t[i] - t[i - 1]) * (crit - a) / (b - a))); Y.push(crit);
-    }
+    if (i && fin(a) && fin(b) && (a > crit) !== up) { X.push(iso(t[i - 1] + (t[i] - t[i - 1]) * (crit - a) / (b - a))); Y.push(crit); }
     X.push(x[i]); Y.push(up ? b : null);
   }
   return { X, Y };
 }
-
-function crossChart(el, loaded, win) {
-  // market identity from quiet hues; red and green stay reserved for bubble and z
-  const colors = ["#534AB7", "#3D6B85", "#8A6D45", "#85507A"];
-  const traces = loaded.map(([m, r], i) => ({ x:m.months, y:r.z, name:`${m.index} · ${wlabel(r.w)}`,
-    legendgroup:m.key, line:{ width:1.15, color:colors[i % 4] }, hovertemplate:"%{y:.2f}" }));
+function crossChart(el, loaded) {
+  const c = C(), dash = ["solid", "dash", "dot", "dashdot"], cols = [c.ink, c.ink2, c.ink3, c.ink2];
+  const traces = loaded.map(([m, r], i) => ({ x:m.months, y:r.z, name:`${m.index}, ${wlabel(r.w)}`, legendgroup:m.key,
+    line:{ width:1.2, color:cols[i % 4], dash:dash[i % 4] }, hovertemplate:"%{y:.2f}" }));
   loaded.forEach(([m, r]) => {
     const { X, Y } = aboveOnly(m.months, r.z, r.crit);
-    traces.push({ x:X, y:Y, legendgroup:m.key, showlegend:false, hoverinfo:"skip",
-      line:{ width:2, color:M.bubble }, connectgaps:false });
+    traces.push({ x:X, y:Y, legendgroup:m.key, showlegend:false, hoverinfo:"skip", line:{ width:2.2, color:c.red }, connectgaps:false });
   });
   const crit = loaded[0][1].crit;
-  const L = layout(400, true, {
-    shapes:[hline(crit, "y", C.line2, "dot")],
+  const L = layout(380, { showlegend:true, margin:{ l:46, r:12, t:34, b:30 }, shapes:[hline(crit, c.ink, "dot")],
     annotations:[{ xref:"paper", x:0, y:crit, xanchor:"left", yanchor:"bottom", showarrow:false,
-      text:`threshold ≈${crit.toFixed(2)}`, font:{ size:11, color:C.ink3 }, bgcolor:C.surface, borderpad:3 }],
-  });
+      text:`threshold ≈ ${crit.toFixed(2)}`, font:{ size:11, color:c.ink2 }, bgcolor:c.paper, borderpad:2 }] });
   L.yaxis.title.text = "z";
   const starts = loaded.map(([m, r]) => m.months[r.z.findIndex(fin)]).sort();
   L.xaxis.range = [starts[0], loaded[0][0].months.at(-1)];
-  Plotly.newPlot(el, traces, L, CFG);
+  draw(el, traces, L);
 }
-
 function heatChart(el, m) {
-  const ws = WINDOWS.filter(w => m.windows[w]);
+  const c = C(), ws = WINDOWS.filter(w => m.windows[w]);
   const z = ws.map(w => { const r = m.windows[w]; return r.z.map(v => fin(v) ? (v > r.crit ? 1 : 0) : null); });
-  const L = layout(40 + ws.length * 26, false);
+  const L = layout(44 + ws.length * 26);
   L.yaxis = { ...L.yaxis, showgrid:false, autorange:"reversed", type:"category" };
-  L.margin.l = 44;
-  Plotly.newPlot(el, [{ type:"heatmap", x:m.months, y:ws.map(wlabel), z, showscale:false, ygap:2, zmin:0, zmax:1,
-    colorscale:[[0, "#F1EFE9"], [1, M.bubble]],
-    customdata:z.map(row => row.map(v => v === 1 ? "bubble" : "not flagged")),
-    hovertemplate:"%{y} window · %{x|%Y-%m} · %{customdata}<extra></extra>" }], L, CFG);
+  draw(el, [{ type:"heatmap", x:m.months, y:ws.map(wlabel), z, showscale:false, ygap:2, zmin:0, zmax:1,
+    colorscale:[[0, c.grid], [1, c.red]], customdata:z.map(row => row.map(v => v === 1 ? "bubble" : "not flagged")),
+    hovertemplate:"%{y} window, %{x|%Y-%m}: %{customdata}<extra></extra>" }], L);
 }
-
 function compChart(el, s) {
-  const L = layout(116, false);
+  const c = C(), L = layout(120);
   L.margin = { l:40, r:10, t:6, b:22 };
-  Plotly.newPlot(el, [{ x:s.months, y:s.v, line:{ color:M.price, width:1.2 }, hovertemplate:"%{y:.2f}" }], L, CFG);
+  draw(el, [{ x:s.months, y:s.v, line:{ color:c.series, width:1.2 }, hovertemplate:"%{y:.2f}" }], L);
 }
 
-// Inline SVG of the z history, threshold drawn. A row stays a row.
-function sparkline(z, crit, w = 182, h = 38) {
-  const v = z.filter(fin);
-  if (v.length < 3) return "";
-  let lo = Math.min(...v), hi = Math.max(...v, crit);
-  const pad = (hi - lo) * .12 || 1; lo -= pad; hi += pad;
-  const sx = i => 1 + i * (w - 2) / (v.length - 1), sy = y => h - 1 - (y - lo) * (h - 2) / (hi - lo);
-  const pts = v.map((y, i) => `${sx(i).toFixed(1)},${sy(y).toFixed(1)}`).join(" ");
-  const yc = sy(crit).toFixed(1), id = "c" + Math.random().toString(36).slice(2, 8);
-  const above = Math.max(...v) > crit
-    ? `<clipPath id="${id}"><path d="M1,${yc} L${w - 1},${yc} L${w - 1},0 L1,0 Z"/></clipPath>` +
-      `<polyline points="${pts}" fill="none" stroke="${M.bubble}" stroke-width="2.4" clip-path="url(#${id})"/>` : "";
-  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true" style="display:block;overflow:visible;max-width:100%">` +
-    `<line x1="1" y1="${yc}" x2="${w - 1}" y2="${yc}" stroke="${M.band}" stroke-width="1" stroke-dasharray="3 3"/>` +
-    `<polyline points="${pts}" fill="none" stroke="${M.trend}" stroke-width="1.4" stroke-linejoin="round"/>${above}</svg>`;
+// ---------------------------------------------------------------- shared blocks
+function riskTable() {
+  const o = R.next.one, row = (k, a) => `<td class="num">${pc(o[k][a].var)}</td><td class="num">${pc(o[k][a].es)}</td>`;
+  return `<div class="tbl"><table><thead><tr><th class="l">Series</th><th>VaR 1%</th><th>ES 1%</th><th>VaR 2.5%</th><th>ES 2.5%</th></tr></thead><tbody>` +
+    ["E", "USD", "F"].map(k => `<tr><td>${SERIES[k]}</td>${row(k, "0.01")}${row(k, "0.025")}</tr>`).join("") + "</tbody></table></div>";
+}
+function tenTable() {
+  const t = R.next.ten, ks = ["E", "USD"];
+  const body = ks.map(k => {
+    const l = R.live10[k];
+    if (!t[k]) return `<tr><td>${SERIES[k]}</td><td colspan="4" class="l"><span class="st alert">Removed by the live kill rule</span></td></tr>`;
+    return `<tr><td>${SERIES[k]}<small>Live: ${l.hits["0.01"]} breaches at 1%, ${l.hits["0.025"]} at 2.5%; ${l.n} of 25 windows</small></td>` +
+      `<td class="num">${pc(t[k]["0.01"].var)}</td><td class="num">${pc(t[k]["0.01"].es)}</td>` +
+      `<td class="num">${pc(t[k]["0.025"].var)}</td><td class="num">${pc(t[k]["0.025"].es)}</td></tr>`;
+  }).join("");
+  return `<div class="tbl"><table><thead><tr><th class="l">Series</th><th>VaR 1%</th><th>ES 1%</th><th>VaR 2.5%</th><th>ES 2.5%</th></tr></thead><tbody>${body}</tbody></table></div>`;
+}
+function valRows(win) {
+  const loaded = [], rows = ORDER.filter(k => V.markets[k]).map(k => {
+    const m = V.markets[k];
+    if (m.error) return `<tr><td>${esc(m.index)}</td><td colspan="5" class="l wrap-ok"><span class="st alert">Not loaded</span><small>${esc(m.error)}</small></td></tr>`;
+    const r = reading(m, win);
+    if (!r) return `<tr class="lnk" data-go="${href(k, win)}"><td><a href="${href(k, win)}">${esc(m.index)}</a></td><td colspan="5" class="l muted">History too short for a ${wlabel(win)} window.</td></tr>`;
+    loaded.push([m, r]);
+    const z = r.z.at(-1), s = state(z, r.crit), ov = lastFin(m.overlay.v);
+    return `<tr class="lnk" data-go="${href(k, win)}"><td><a href="${href(k, win)}">${esc(m.index)}</a>` +
+      `<small>${m.ccy}${m.weak ? ", weak signal" + (m.start ? `, from ${m.start.slice(0, 4)}` : "") : ""}</small></td>` +
+      `<td class="num"><span class="big ${stCls(s)}">${fin(z) ? sign(z) : "—"}</span><small>vs ${r.crit.toFixed(2)}, ${wlabel(r.w)}</small></td>` +
+      `<td class="l">${st(s)}</td>` +
+      `<td class="num">${fin(ov) ? sign(ov) : "—"}<small>${fin(ov) ? band(ov) : "not available"}</small></td>` +
+      `<td class="num">${monthName(m.months.at(-1))}<small>${m.prov ? "provisional" : "settled"}</small></td></tr>`;
+  });
+  return { loaded, html:`<div class="tbl"><table><thead><tr><th class="l">Index</th><th>z</th><th class="l">State</th>` +
+    `<th>Macro overlay</th><th>Data through</th></tr></thead><tbody>${rows.join("")}</tbody></table></div>` };
+}
+function winControl(win, m) {
+  return `<div class="ctl"><span class="lab" id="wl">Trend window</span><div class="seg" role="radiogroup" aria-labelledby="wl" id="win">` +
+    [null, ...WINDOWS].map(w => {
+      const none = !!(w && m && m.windows && !m.windows[w]);
+      return `<label title="${none ? `${esc(m.index)} has too little history for a ${wlabel(w)} window` : ""}">` +
+        `<input type="radio" name="w" value="${w || ""}"${w === win ? " checked" : ""}${none && w !== win ? " disabled" : ""}>` +
+        `<span>${w ? wlabel(w) : "Default"}</span></label>`;
+    }).join("") + "</div></div>";
 }
 
 // ---------------------------------------------------------------- pages
+function keyReadings(win) {
+  const cell = (ex, q, v, alert, state, note) => `<a class="kr" href="#/" data-ex="${ex}"><div class="kq">${q}</div>` +
+    `<div class="kv num${alert ? " alert" : ""}">${v}</div>${state}<div class="kn">${note}</div></a>`;
+  const rows = [];
+  if (R) {
+    const n = R.next, p = 100 * n.pct, flagOn = n.flag, near = !flagOn && n.sessions_above > 0;
+    rows.push(cell("stress", "Turkish stress", `${p.toFixed(1)}<small>pct</small>`, flagOn,
+      flagOn ? st("bubble", "Flag on") : near ? st("elevated", "Above threshold") : st("normal", "Flag off"),
+      `${n.sessions_above} of ${R.m} sessions above ${(100 * R.tau).toFixed(1)}`));
+    const v = n.one.E["0.01"];
+    rows.push(cell("budget", "Loss budget, next session", pc(v.var), false, st("normal", "1% VaR, XU100 TRY"),
+      `Shortfall ${pc(v.es)}`));
+    const i = nSess() - 1, h = H();
+    const hitK = ["E", "USD", "F"].filter(k => fin(h[`r_${k}`][i]) && h[`r_${k}`][i] <= h[`var1_${k}`][i]);
+    rows.push(cell("breach", `Last session, ${dayName(R.hist.date[i]).replace(/ \d{4}$/, "")}`, pc(h.r_E[i]), hitK.length > 0,
+      hitK.length ? st("bubble", `Breach: ${hitK.map(k => SERIES[k]).join(", ")}`) : st("normal", "Within VaR"),
+      `vs 1% VaR ${pc(h.var1_E[i])}`));
+  } else {
+    rows.push(`<div class="kr"><div class="kq">Turkish risk</div><div class="err-line">Risk readings could not be loaded` +
+      `${RERR ? ` (${esc(RERR)})` : ""}.</div></div>`);
+  }
+  if (V) {
+    const got = ORDER.map(k => V.markets[k]).filter(m => m && !m.error).map(m => [m, reading(m, win)]).filter(([, r]) => r);
+    const ss = got.map(([m, r]) => [m, r, r.z.at(-1), state(r.z.at(-1), r.crit)]);
+    const bub = ss.filter(x => x[3] === "bubble"), el = ss.filter(x => x[3] === "elevated");
+    const months = [...new Set(got.map(([m]) => m.months.at(-1)))].sort().at(-1);
+    rows.push(cell("val", "Stretched vs real trend", `${bub.length}<small>of ${ss.length}</small>`, bub.length > 0,
+      bub.length ? st("bubble", `Bubble: ${bub.map(x => x[0].index).join(", ")}`)
+        : el.length ? st("elevated", `Elevated: ${el.map(x => x[0].index).join(", ")}`) : st("normal", "None above threshold"),
+      `Monthly, ${months ? monthName(months) : "—"} provisional`));
+  } else {
+    rows.push(`<div class="kr"><div class="kq">Valuation</div><div class="err-line">Valuation readings could not be loaded` +
+      `${VERR ? ` (${esc(VERR)})` : ""}.</div></div>`);
+  }
+  return rows.join("");
+}
+const ord = x => { const n = Math.round(x * 10) / 10, i = Math.floor(n) % 100;
+  const s = (i > 10 && i < 14) || String(n).includes(".") ? "th" : ({ 1:"st", 2:"nd", 3:"rd" })[i % 10] || "th";
+  return `${n.toFixed(1)}${s}`; };
+
 function pageOverview(win) {
-  const loaded = [];
-  const rows = Object.values(D.markets).map(m => {
-    if (m.error) return `<div class="row"><div class="mk">${esc(m.index)}</div>` +
-      `<div class="err-inline">Could not be loaded &mdash; ${esc(m.error)}</div></div>`;
-    const r = reading(m, win);
-    if (!r) return `<a class="row" href="${href(m.key, win)}"><div class="mk">${esc(m.index)}<small>${m.ccy}</small></div>` +
-      `<div class="note" style="grid-column:2/-1">History too short for a ${wlabel(win)} window.</div></a>`;
-    loaded.push([m, r]);
-    const z = r.z.at(-1), s = state(z, r.crit), ov = lastFin(m.overlay.v);
-    const flag = m.weak || m.start ? `<br><span class="flag">${m.start ? `from ${m.start.slice(0, 4)} &middot; ` : ""}weak signal</span>` : "";
-    return `<a class="row" href="${href(m.key, win)}">` +
-      `<div class="mk">${esc(m.index)}<small>${m.ccy}${flag}</small></div>` +
-      `<div class="num meta">${wlabel(r.w)}</div>` +
-      `<div><div class="z" style="color:${zColor(s)}">${fin(z) ? sign(z) : "—"}</div><div class="z-sub">vs ${r.crit.toFixed(2)}</div></div>` +
-      `<div>${pill(s)}<div class="meta" style="margin-top:.4rem">${fin(ov)
-        ? `<b>${band(ov)}</b> <span class="num">${sign(ov)}</span>` : '<span style="color:var(--ink3)">not available</span>'}</div></div>` +
-      `<div>${sparkline(r.z.slice(-121), r.crit)}<div class="z-sub" style="margin-top:.3rem">to ${monthName(m.months.at(-1))}` +
-      `${m.prov ? " &middot; provisional" : ""}</div></div></a>`;
-  });
-  $("#main").innerHTML =
-    '<h1 tabindex="-1">Bubble Methodology</h1><p class="lede">Each market&rsquo;s CPI-deflated real index, measured against ' +
-    'its own rolling trend. A reading is a statistical deviation &mdash; not a forecast, and not advice.</p>' +
-    staleBanner() +
-    '<div class="rail"><div class="rail-head"><span class="th">Index</span><span class="th">Window</span>' +
-    '<span class="th">z</span><span class="th">State &middot; macro</span><span class="th">z, last 10 years</span></div>' +
-    rows.join("") + "</div>" +
-    (loaded.length > 1 ? '<h2>Across markets</h2><p class="lede">One market, or all of them at once? z is built to be ' +
-      'comparable across window lengths, so the per-market windows share an axis; their thresholds differ only in ' +
-      'the second decimal.</p><div class="chart" style="margin-top:1.2rem" role="img" ' +
-      'aria-label="z-score history for every market on one axis"><div id="cross"></div></div>' : "");
-  if (loaded.length > 1) crossChart($("#cross"), loaded, win);
+  let html = `<h1 tabindex="-1">After the close</h1><p class="lede lede-front">Daily risk for XU100 and the lira beside a monthly real-trend test for four indices: ` +
+    `read separately, never combined, and not forecasts of returns.</p>` +
+    riskStale() + valStale() +
+    `<section class="krs" aria-label="Key readings">${keyReadings(win)}</section><div class="gap">`;
+  html += R ? exhibit(1, "stress", "Turkish stress gauge, last two years",
+    `Where the XU100-in-USD volatility forecast ranks in its own history. Red spans: flag on; triangles: dated stress events. Every session shown is holdout or live; the dashed rule marks the live start.` +
+    fn("Stress gauge: MSGJ1 volatility forecast for XU100 in USD, ranked against its own expanding history. The flag turns on after 3 sessions above the 92.5th percentile. Rule fixed in the jump-model design, §7.8."),
+    plot("x-stress", "Stress percentile over the last two years with the 92.5 flag threshold"),
+    `<b>Source:</b> BIST via Yahoo Finance; USDTRY Bloomberg BFIX 18:00. <b>Model:</b> ${R.next.flag_model} (GJR-GARCH with jumps). ` +
+    `<b>Validation:</b> caught 7 of 7 holdout events, 0.30 false-alarm episodes a year.`) : "<div></div>";
+  html += "</div>";
+  if (R) {
+    html += `<div class="row2 gap">` +
+      exhibit(2, "budget", "Loss budget for the next session",
+        `One-day log-return VaR and expected shortfall, lower tail only: the loss on a long position.${fn("For USDTRY the lower tail is the loss from holding dollars, i.e. the lira strengthening. The depreciation tail was not backtested and is not reported.")}`,
+        riskTable() + `<p class="tbl-note">Ten-day figures for XU100 are on the risk page and carry a live kill rule.</p>`,
+        `<b>Model:</b> ${esc(R.next.var_model)}, Student-t ν = ${R.next.nu}. <b>Validation:</b> 1-day VaR coverage passed the holdout; ES failed it on XU100 (TRY).`) +
+      exhibit(3, "breach", "Realised XU100 return against its 1% VaR, last 250 sessions",
+        `Bars are daily returns; red dots broke the VaR set at the close before; the diamond is the next session's VaR. All sessions shown are holdout or live.`,
+        plot("x-breach", "Daily XU100 returns against the 1% VaR line, breaches in red"),
+        `<b>Source:</b> BIST via Yahoo Finance. <b>Model:</b> ${esc(R.next.var_model)}; 1 breach in 100 sessions expected. <b>Validation:</b> holdout coverage passed, 2 of 12 rejections.`) + "</div>";
+  }
+  if (V) {
+    const { loaded, html:t } = valRows(win);
+    html += `<section class="section"><div class="page-head"><div><h2>Valuation, monthly</h2></div>${winControl(win)}</div>` +
+      exhibit(4, "val", "Real price against its own trend, four indices",
+        `Each index deflated by its own CPI and measured against a rolling linear trend. z above the threshold is a bubble state; within 1 of it, elevated.`,
+        t + (loaded.length > 1 ? plot("x-cross", "z-score history for every index on one axis; stretches above threshold in red") : ""),
+        `<b>Source:</b> Yahoo Finance; FRED, ONS, e-Stat, CBRT EVDS. <b>Model:</b> Bubble Methodology, leverage-corrected rolling z, t-threshold. ` +
+        `<b>Validation:</b> windows chosen on pre-fixed criteria (rank correlation with forward real returns).`) + "</section>";
+    $("#main").innerHTML = html + notesBlock();
+    if (loaded.length > 1) crossChart($("#x-cross"), loaded);
+  } else $("#main").innerHTML = html + notesBlock();
+  if (R) {
+    stressChart($("#x-stress"), Math.max(0, nSess() - 504), 330);
+    varChart($("#x-breach"), "E", Math.max(0, nSess() - 250), 300);
+  }
+}
+
+function pageRisk(sel) {
+  if (!R) {
+    $("#main").innerHTML = `<h1 tabindex="-1">XU100 and the lira</h1><div class="callout err"><b>Risk readings could not be loaded.</b> ` +
+      `${RERR ? esc(RERR) + ". " : ""}They are published from the daily run after the BIST close; the valuation lens is unaffected.</div>`;
+    return;
+  }
+  const k = SERIES[sel] ? sel : "E", n = R.next;
+  const segS = `<div class="ctl"><span class="lab" id="sl">Series</span><div class="seg" role="radiogroup" aria-labelledby="sl" id="ser">` +
+    ["E", "USD", "F"].map(s => `<label><input type="radio" name="s" value="${s}"${s === k ? " checked" : ""}><span>${SERIES[s]}</span></label>`).join("") + "</div></div>";
+  const per = [["v", "Validation, 2013–19", "blind"], ["h", "Holdout, 2020–26", "seen once"], ["l", "Live", `since ${dayName(R.live0)}`]];
+  const btab = `<div class="tbl"><table><thead><tr><th class="l">Period</th><th>Sessions</th><th>1% breaches</th><th>Rate</th>` +
+    `<th>2.5% breaches</th><th>Rate</th></tr></thead><tbody>` + per.map(([c, t, s]) => {
+      const pr = periodRange(c); if (!pr) return "";
+      const a = breaches(k, "0.01", ...pr), b = breaches(k, "0.025", ...pr);
+      const rt = x => x.n ? (100 * x.hit / x.n).toFixed(2) + "%" : "—";
+      return `<tr><td>${t}<small>${s}</small></td><td class="num">${a.n}</td><td class="num">${a.hit}</td><td class="num">${rt(a)}</td>` +
+        `<td class="num">${b.hit}</td><td class="num">${rt(b)}</td></tr>`;
+    }).join("") + `</tbody></table></div><p class="tbl-note">A calibrated 1% VaR breaks on about 1% of sessions, a 2.5% VaR on about 2.5%.</p>`;
+  const html = `<div class="page-head"><div><h1 tabindex="-1">XU100 and the lira</h1>` +
+    `<p class="lede">XU100 in lira and USDTRY modelled jointly, so risk in dollars includes the currency. Readings after the ` +
+    `${dayName(R.asof, true)} close, for the next session.</p></div></div>` + riskStale() +
+    `<div class="gap" style="margin-top:3rem">` +
+    exhibit(1, "r-stress", "Stress gauge since 2013",
+      `Percentile of the XU100-in-USD volatility forecast; the flag turns on after ${R.m} sessions above ${(100 * R.tau).toFixed(1)}. ` +
+      `Triangles mark dated stress events${fn("Event list fixed before scoring (jump-model data/events.csv). Onset dates; some are approximate.")}. ` +
+      `Today: <b>${(100 * n.pct).toFixed(1)}</b>, ${n.flag ? "<b>flag on</b>" : "flag off"}.`,
+      plot("r-stress", "Stress percentile since 2013 with events, holdout period marked"),
+      `<b>Model:</b> ${n.flag_model}, refit every 21 sessions. <b>Validation:</b> holdout 7 of 7 events caught, median lag 2 sessions; ` +
+      `the 2016 coup was caught 6 sessions late.`) + "</div>" +
+    `<div class="row2 gap">` +
+    exhibit(2, "r-one", "One-day VaR and ES, next session", `Lower tail, log return.`, riskTable(),
+      `<b>Model:</b> ${esc(n.var_model)}, ν = ${n.nu}, fitted on ${n.fit_n.toLocaleString("en-GB")} sessions. Forecast daily sd: ` +
+      `XU100 TRY ${n.sd.E.toFixed(2)}%, USDTRY ${n.sd.F.toFixed(2)}%, XU100 USD ${n.sd.USD.toFixed(2)}%.`) +
+    exhibit(3, "r-ten", "Ten-day VaR and ES, XU100 only",
+      `Sum of the next ${R.horizon10} sessions. Not blind: chosen after its backtest was seen, so the only honest test is live.` +
+      fn(`Removed if, over its last 25 non-overlapping ${R.horizon10}-day windows, it breaks ≥ 2 times at 1% or ≥ 3 times at 2.5%. USDTRY failed the ten-day backtest and is never shown.`),
+      tenTable(), `<b>Model:</b> ${esc(n.var_model)} Monte Carlo over ${R.horizon10} sessions. <b>Validation:</b> backtest failed on USDTRY (§8.6); XU100 is not blind and under a live kill rule since ${dayName(R.live0)}.`) + "</div>" +
+    `<section class="section"><div class="page-head"><div><h2>Backtest</h2></div>${segS}</div>` +
+    exhibit(4, "r-var", `Realised return against 1% VaR, ${SERIES[k]}`,
+      `Every session since 2013, each against the VaR set at the previous close. Red dots are breaches.`,
+      plot("r-var", `Daily returns against the 1% VaR for ${SERIES[k]}`) + btab,
+      `<b>Validation:</b> holdout VaR coverage passed with 2 of 12 rejections (GJR-t benchmark: 7). USDTRY at 2.5% is conservative.`) +
+    "</section>" +
+    `<section class="section"><div class="page-head"><div><h2>Decomposition</h2></div></div><div class="row2">` +
+    exhibit(5, "r-jump", "Jump probabilities, last two years",
+      `Probability that the session's return contained each kind of jump, given its size. FX-only jumps have stayed below 5% since December 2025.${fn("The robustness battery (§8.8) did not find statistical support for the jump component over a plain GJR model. Read these as “this return was large for its volatility”, not as proof of a jump.")}`,
+      plot("r-jump", "Probabilities of equity, FX and co-jumps per session"), `<b>Model:</b> ${esc(n.var_model)} jump posterior. <b>Validation:</b> the §8.8 battery did not support the jump component; descriptive only.`) +
+    exhibit(6, "r-fx", "Lira share of dollar risk",
+      `Share of the forecast XU100-in-USD variance that comes from USDTRY. When it rises, dollar losses are a currency story.`,
+      plot("r-fx", "Share of XU100-in-USD variance due to USDTRY"), `<b>Model:</b> ${esc(n.var_model)} forecast variance, Euler allocation. <b>Validation:</b> not tested; descriptive.`) +
+    "</div></section>" +
+    `<section class="section"><h2>Validation record</h2><p class="lede">Criteria were fixed before each study ran. Failures stay on this page.</p>${validation()}` +
+    `<h3 style="margin-top:2rem">Known limitations</h3><ul class="prose" style="padding-left:1.2rem">${R.caveats.map(c => `<li>${esc(c)}</li>`).join("")}</ul></section>`;
+  $("#main").innerHTML = html + notesBlock();
+  stressChart($("#r-stress"), 0, 380, { periods:true, selector:true, pad:20 });
+  varChart($("#r-var"), k, 0, 340);
+  jumpChart($("#r-jump"), Math.max(0, nSess() - 504), 330);
+  fxChart($("#r-fx"), Math.max(0, nSess() - 504), 330);
+}
+function validation() {
+  const rows = [
+    ["Holdout 2020–26, one shot", "Stress flag detection", "7 of 7 events, 0.30 false-alarm episodes a year", "pass"],
+    ["Holdout 2020–26, one shot", "1-day VaR coverage", "2 of 12 rejections (GJR-t: 7)", "pass"],
+    ["Holdout 2020–26, one shot", "Expected shortfall", "Fails on XU100 (TRY), Z2 p = 0.008", "fail"],
+    ["Holdout 2020–26, one shot", "Log score vs GJR-t", "Fails on USDTRY and XU100 (USD); thin Gaussian tails, 21 Dec 2021", "fail"],
+    ["Student-t components", "Replace Gaussian VaR/ES", "Passes all 4 checks; gains not significant; holdout not blind", "pass, not blind"],
+    ["Ten-day VaR/ES", "Monte Carlo vs √10 and GJR-t", "Fails on USDTRY; XU100 shipped under a live kill rule", "fail"],
+    ["Robustness battery", "Bootstrap, rolling windows, signs, PIT", "12 of 16 pass; jump component not supported", "partial"],
+  ];
+  const cls = s => s === "pass" ? "ok" : s === "fail" ? "alert" : "na";
+  return `<div class="tbl vr"><table><thead><tr><th class="l">Study</th><th class="l">What it tested</th><th class="l">Result</th><th class="l">Verdict</th></tr></thead><tbody>` +
+    rows.map(r => `<tr><td>${r[0]}</td><td class="l">${r[1]}</td><td class="l">${r[2]}</td><td class="l"><span class="st ${cls(r[3])}">${r[3]}</span></td></tr>`).join("") +
+    `</tbody></table></div><p class="tbl-note">Source: jump-model DESIGN.md §8.4–8.8 and §13, 28 Sep 2026.</p>`;
 }
 
 function pageMarket(m, win) {
   if (m.error) {
-    $("#main").innerHTML = `<h1 tabindex="-1">${esc(m.index)}</h1><div class="err">Could not be loaded &mdash; ${esc(m.error)}</div>`;
+    $("#main").innerHTML = `<h1 tabindex="-1">${esc(m.index)}</h1><div class="callout err"><b>Could not be loaded.</b> ${esc(m.error)}</div>`;
     return;
   }
   const r = reading(m, win);
-  const span = m.start ? ` &middot; history from ${m.start.slice(0, 4)}` : "";
-  let html = `<h1 tabindex="-1">${esc(m.index)}</h1><p class="lede">Real ${m.ccy}, CPI-deflated` +
-    `${r ? ` &middot; ${wlabel(r.w)} rolling trend` : ""}${span}</p>` + staleBanner() +
-    (m.note ? `<div class="warn">${m.note} The era breakdown is in <code>results/asia_eras.csv</code>.</div>` : "");
+  const span = m.start ? `, history from ${m.start.slice(0, 4)}` : "";
+  let html = `<div class="page-head"><div><h1 tabindex="-1">${esc(m.index)}</h1><p class="lede">Valuation lens, monthly. Real ${m.ccy}, ` +
+    `deflated by local CPI${r ? `, against a ${wlabel(r.w)} rolling trend` : ""}${span}.</p></div>${winControl(win, m)}</div>` + valStale() +
+    (m.note ? `<div class="callout">${m.note} The era breakdown is in <code>results/asia_eras.csv</code>.</div>` : "") +
+    (m.key === "turkey" && R ? `<div class="callout">BIST 100 also has a daily lens: ` +
+      `<a href="#/risk">XU100 and lira risk</a>, as of the ${dayName(R.asof)} close.</div>` : "");
   if (!r) {
     const longest = Math.max(...Object.keys(m.windows).map(Number));
-    $("#main").innerHTML = html + `<div class="err">${esc(m.index)} has ${Math.floor(m.months.length / 12)} years ` +
-      `of real price history, too short for a ${wlabel(win)} trend window. The longest window it supports is ` +
-      `<a href="${href(m.key, longest)}">${wlabel(longest)}</a>.</div>`;
+    $("#main").innerHTML = html + `<div class="callout err">${esc(m.index)} has ${Math.floor(m.months.length / 12)} years of real price ` +
+      `history, too short for a ${wlabel(win)} trend window. The longest it supports is <a href="${href(m.key, longest)}">${wlabel(longest)}</a>.</div>`;
     return;
   }
   const z = r.z.at(-1), s = state(z, r.crit), ov = lastFin(m.overlay.v);
-  const first = m.months[r.z.findIndex(fin)];
-  html += '<div class="stats">' +
-    `<div><span class="th">State</span>${pill(s)}<span class="note">${!fin(z) ? "no reading this month" : `z ${z > r.crit ? "above" : "below"} threshold`}</span></div>` +
-    `<div><span class="th">z</span><span class="v" style="color:${zColor(s)}">${fin(z) ? sign(z) : "—"}</span><span class="note">threshold ${r.crit.toFixed(2)}</span></div>` +
-    `<div><span class="th">Macro overlay</span><span class="v"${fin(ov) ? "" : ' style="color:var(--ink3)"'}>${fin(ov) ? sign(ov) : "—"}</span><span class="note">${fin(ov) ? band(ov) : "not available"}</span></div>` +
-    `<div><span class="th">Data through</span><span class="v">${monthName(m.months.at(-1))}</span><span class="note">${m.prov ? "provisional" : `readings from ${first.slice(0, 4)}`}</span></div>` +
-    "</div>" +
-    `<div class="chart" role="img" aria-label="${esc(m.index)} log real price against its rolling trend, with z below"><div id="main-chart"></div></div>` +
-    '<div class="cols"><section><h3>Episodes</h3><p class="note">A run of flagged months is one event. ' +
-    "Drawdown runs from the episode peak over the following 24 months.</p>" +
-    (r.episodes.length
-      ? "<table><thead><tr><th>Entered</th><th>z</th><th>Months</th><th>Real drawdown %</th></tr></thead><tbody>" +
-        r.episodes.map(e => `<tr${e.open ? ' class="open"' : ""}><td>${e.entered}</td><td>${e.z.toFixed(2)}</td>` +
-          `<td>${e.months}${e.running ? '<small>running</small>' : ""}</td>` +
-          `<td>${e.dd === null ? "\u2014" : e.dd.toFixed(1)}${e.open ? "<small>so far</small>" : ""}</td></tr>`).join("") +
-        "</tbody></table>" +
-        (r.episodes.some(e => e.open) ? '<p class="note" style="margin-top:.6rem">Greyed rows are not settled: fewer ' +
-          "than 24 months have passed since the episode ended, so the drawdown is only what has happened so far." +
-          "</p>" : "")
-      : '<div class="card note">No episode at this window &mdash; the reading has never crossed its threshold over the available history.</div>') +
-    '</section><section><h3>Macro overlay</h3><p class="note">A separate signal. It does not enter z and does not change the state above.</p>' +
-    (Object.keys(m.comps).length
-      ? Object.entries(m.comps).map(([k, c]) => `<div class="comp-label">${k.replace("_", " ")} &middot; ` +
-          `<span class="num">${lastFin(c.v).toFixed(2)}</span></div><div class="chart"><div id="comp-${k}"></div></div>`).join("")
-      : '<div class="card note">No macro components are published for this market in the sources used here.</div>') +
-    '</section></div>' +
-    '<h2>Window sensitivity</h2><p class="lede">The window is the biggest judgement call in the model, so it is ' +
-    'shown rather than hidden. Short windows fire constantly; the longest ones never fire.</p>' +
-    '<div class="chart" style="margin-top:1.2rem" role="img" aria-label="Bubble state by month for each window length"><div id="heat"></div></div>';
-  $("#main").innerHTML = html;
+  html += `<div class="tbl" style="margin-top:1.8rem"><table><thead><tr><th class="l">State</th><th>z</th><th>Threshold</th><th>Macro overlay</th><th>Data through</th></tr></thead>` +
+    `<tbody><tr><td>${st(s)}</td><td class="num"><span class="big ${stCls(s)}">${fin(z) ? sign(z) : "—"}</span></td><td class="num">${r.crit.toFixed(2)}<small>${wlabel(r.w)} window</small></td>` +
+    `<td class="num">${fin(ov) ? sign(ov) : "—"}<small>${fin(ov) ? band(ov) : "not available"}</small></td>` +
+    `<td class="num">${monthName(m.months.at(-1))}<small>${m.prov ? "provisional" : "settled"}</small></td></tr></tbody></table></div>` +
+    `<div class="gap">` + exhibit(1, "v-main", `Real price and its rolling trend`,
+      `Log real price against the trend fitted to the ${r.w} months before each month; below, z against its threshold. Red spans are bubble episodes.` +
+      fn("Each month is removed from its own trend fit before being measured against it (leverage correction), so z is comparable across windows. Nothing after month t is used for month t."),
+      plot("main-chart", `${m.index} log real price against its rolling trend, with z below`),
+      `<b>Source:</b> Yahoo Finance; ${esc(m.ccy)} CPI. <b>Model:</b> Bubble Methodology, t(${r.w - 3}) threshold. <b>Validation:</b> ${m.weak ? "weakest market; restricted after seeing the result" : "window chosen on pre-fixed criteria"} (results/window_study.csv).`) + "</div>" +
+    `<div class="row2 gap">` +
+    exhibit(2, "v-ep", "Episodes", `A run of flagged months is one event. Drawdown runs from the episode's real peak over the following 24 months.`,
+      r.episodes.length ? `<div class="tbl"><table><thead><tr><th class="l">Entered</th><th>z at entry</th><th>Months</th><th>Real drawdown</th></tr></thead><tbody>` +
+        r.episodes.map(e => `<tr${e.open ? ' class="open"' : ""}><td>${e.entered}</td><td class="num">${e.z.toFixed(2)}</td>` +
+          `<td class="num">${e.months}${e.running ? "<small>running</small>" : ""}</td>` +
+          `<td class="num">${e.dd === null ? "—" : pc(e.dd, 1)}${e.open ? "<small>so far</small>" : ""}</td></tr>`).join("") + "</tbody></table></div>" +
+        (r.episodes.some(e => e.open) ? `<p class="tbl-note">Grey rows are not settled: fewer than 24 months have passed since the episode ended.</p>` : "")
+      : `<p class="tbl-note">No episode at this window: the reading has never crossed its threshold.</p>`,
+      `<b>Source:</b> the model's own episode list, real prices. <b>Validation:</b> descriptive; drawdowns are outcomes, not a test.`) +
+    exhibit(3, "v-macro", "Macro overlay components",
+      `A separate context signal. It does not enter z and does not change the state. Higher means looser.`,
+      Object.keys(m.comps).length ? Object.entries(m.comps).map(([kk, c]) =>
+        `<div class="plot"><div class="t" style="font-size:.8125rem;font-weight:600;color:var(--ink2);margin:.2rem 0">` +
+        `${kk.replace("_", " ")}: <span class="num">${lastFin(c.v).toFixed(2)}</span></div><div id="comp-${kk}"></div></div>`).join("")
+      : `<p class="tbl-note">No macro components are published for this market in the sources used here.</p>`,
+      `<b>Status:</b> not tested for predictive power; context only.`) + "</div>" +
+    `<div class="gap">` + exhibit(4, "v-heat", "Window sensitivity",
+      `Bubble state by month at every window length. The window is the largest judgement call in the model, so it is shown rather than hidden.`,
+      plot("heat", "Bubble state by month for each window length"),
+      `<b>Model:</b> Bubble Methodology at every window. <b>Validation:</b> no multiple-testing correction across windows; see Methodology.`) + "</div>";
+  $("#main").innerHTML = html + notesBlock();
   mainChart($("#main-chart"), m, r);
-  Object.entries(m.comps).forEach(([k, c]) => compChart($(`#comp-${k}`), c));
+  Object.entries(m.comps).forEach(([kk, c]) => compChart($(`#comp-${kk}`), c));
   heatChart($("#heat"), m);
 }
 
 function pageMethod() {
   $("#main").innerHTML = $("#method").innerHTML;
+  const cv = $("#main #caveats");
+  if (cv && R) cv.innerHTML = R.caveats.map(c => `<li>${esc(c)}</li>`).join("");
+  const vr = $("#main #vrec");
+  if (vr) vr.innerHTML = validation();
 }
 
+// ---------------------------------------------------------------- render
+let lastPage = null;
 function render() {
   const rt = route();
-  lastPage = rt.page;
-  sidebar(rt);
-  const m = D.markets[rt.page];
+  NOTES = []; SYNC = [];
+  nav(rt);
+  const m = V && V.markets[rt.page];
   if (rt.page === "method") pageMethod();
+  else if (rt.page === "risk") pageRisk(rt.s);
   else if (m) pageMarket(m, rt.win);
   else pageOverview(rt.win);
-  document.title = (m ? m.index + " · " : rt.page === "method" ? "Methodology · " : "") + "Bubble Methodology";
+  wireSync();
+  document.title = (m ? m.index + " · " : rt.page === "risk" ? "XU100 and lira · " : rt.page === "method" ? "Methodology · " : "") + NAME;
+  lastPage = rt.page;
 }
 
-let lastPage = null;
-$("#skip").addEventListener("click", e => { e.preventDefault(); $("#main h1")?.focus(); });
-$("#chips").addEventListener("change", e => {
-  location.hash = href(route().page, Number(e.target.value) || null);
-});
-window.addEventListener("hashchange", () => {
-  const page = route().page, moved = page !== lastPage;
-  render();
-  // a new page starts at its title; a window change keeps focus and scroll where they were
-  if (moved) { window.scrollTo(0, 0); $("#main h1")?.focus({ preventScroll:true }); }
-});
-
-window.addEventListener("DOMContentLoaded", async () => {
-  try {
-    const res = await fetch("data.json", { cache:"no-cache" });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    D = await res.json();
-  } catch (e) {
-    $("#main").innerHTML = `<h1>Bubble Methodology</h1><div class="err">The readings could not be loaded (${esc(e.message)}). Reload to try again.</div>`;
+document.addEventListener("click", e => {
+  const n = e.target.closest(".fn");
+  if (n) {
+    const li = document.getElementById("note-" + n.dataset.note);
+    if (li) { li.scrollIntoView({ behavior:"smooth", block:"center" }); li.classList.add("on"); setTimeout(() => li.classList.remove("on"), 1800); }
     return;
   }
-  $("#built").textContent = `Readings rebuilt ${D.built}`;
-  buildSidebar();
+  const x = e.target.closest("[data-ex]");
+  if (x) {
+    e.preventDefault();
+    const f = document.getElementById("ex-" + x.dataset.ex);
+    if (f) { f.scrollIntoView({ behavior:"smooth", block:"start" }); f.classList.remove("flash"); void f.offsetWidth; f.classList.add("flash"); }
+    return;
+  }
+  const row = e.target.closest("tr[data-go]");
+  if (row && !e.target.closest("a")) location.hash = row.dataset.go;
+});
+document.addEventListener("change", e => {
+  const rt = route();
+  if (e.target.name === "w") location.hash = href(rt.page, Number(e.target.value) || null);
+  if (e.target.name === "s") location.hash = `#/risk?s=${e.target.value}`;
+});
+$("#skip").addEventListener("click", e => { e.preventDefault(); $("#main h1")?.focus(); });
+window.addEventListener("hashchange", () => {
+  const moved = route().page !== lastPage;
+  const y = window.scrollY;
+  render();
+  if (moved) { window.scrollTo(0, 0); $("#main h1")?.focus({ preventScroll:true }); }
+  else window.scrollTo(0, y);
+});
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { const y = scrollY; render(); scrollTo(0, y); });
+
+async function get(url) {
+  const res = await fetch(url, { cache:"no-cache" });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+window.addEventListener("DOMContentLoaded", async () => {
+  $("#brand").textContent = NAME;
+  const [v, r] = await Promise.allSettled([get("data.json"), get("risk.json")]);
+  if (v.status === "fulfilled") V = v.value; else VERR = v.reason.message;
+  if (r.status === "fulfilled") R = r.value; else RERR = r.reason.message;
+  if (!V && !R) {
+    $("#main").innerHTML = `<h1>${NAME}</h1><div class="callout err"><b>No readings could be loaded.</b> Valuation: ${esc(VERR)}. Risk: ${esc(RERR)}. Reload to try again.</div>`;
+    return;
+  }
+  $("#issue").innerHTML = R ? `After the <b>${dayName(R.asof)}</b> close` : `Valuation rebuilt ${esc(V.built)}`;
+  $("#foot").innerHTML = `<span>${NAME}. Statistical readings, not advice or forecasts of returns.</span>` +
+    `<span>${R ? `Risk published ${esc(R.built)}` : "Risk unavailable"} · ${V ? `Valuation rebuilt ${esc(V.built)}` : "Valuation unavailable"}</span>`;
   render();
 });
 </script>
@@ -542,46 +874,50 @@ window.addEventListener("DOMContentLoaded", async () => {
 <template id="method">
 <article class="prose">
 <h1 tabindex="-1">Methodology</h1>
-<p class="lede">Every number on this site traces back to a paragraph on this page.</p>
+<p class="lede">Two lenses, each validated on its own terms. They are shown side by side and never blended, so one model's failure cannot hide inside another's number.</p>
 
-<h2>What the model computes</h2>
+<section class="part">
+<h2>Risk lens: XU100 and the lira, daily</h2>
 <ol>
-<li><b>Real price.</b> The monthly mean of daily closes, divided by that market&rsquo;s own CPI, then logged. Every market uses its <b>local</b> index and <b>local</b> CPI &mdash; no currency conversion, no special cases.</li>
-<li><b>Rolling trend.</b> For each month <i>t</i>, a straight line is fitted to the <i>W</i> months <b>ending at</b> <i>t</i>. Nothing after <i>t</i> is ever used: every number shown for month <i>t</i> was computable at <i>t</i>.</li>
-<li><b>Leverage correction.</b> Month <i>t</i> is <b>removed from its own fit</b> before being measured against it. The last point of a linear fit is its highest-leverage point, so an uncorrected residual there is shrunk by <code>sqrt(1-h)</code> &mdash; about 16% at a 12-month window, under 1% at 240. Without this, z-scores from different window lengths are not comparable, and comparing windows is a feature here.</li>
+<li><b>What is modelled.</b> Daily log returns of XU100 in lira and of USDTRY, jointly, from August 2008. USDTRY is the Bloomberg BFIX 18:00 Istanbul fixing, matched to the BIST close. XU100 in dollars is the lira return minus the USDTRY return.</li>
+<li><b>Model.</b> A bivariate GJR-GARCH with jumps: equity-only, FX-only and simultaneous co-jumps. A regime-switching version was built and tested; information criteria chose a single regime, and extra regimes on top of GARCH were not identifiable. VaR and ES use Student-t components (MSGJ1-t); the stress flag uses the Gaussian model (MSGJ1). Both refit every 21 sessions.</li>
+<li><b>Stress flag.</b> The model's XU100-in-USD volatility forecast is ranked against its own history. The flag turns on after 3 consecutive sessions above the 92.5th percentile. Among the signals scored against dated stress events, this ranked best (AUC 0.90).</li>
+<li><b>VaR and ES.</b> One session ahead, lower tail only, as backtested. For USDTRY the lower tail is the loss from holding dollars; the depreciation tail is not reported.</li>
+<li><b>Ten days.</b> For XU100 only, by Monte Carlo from the same model. It was chosen after its backtest had been seen, so it is not blind: it is removed automatically if it breaks too often live.</li>
+<li><b>Jumps and the lira share.</b> Jump probabilities are the posterior that a session's return contained each type of jump. The lira share is the part of the dollar variance forecast that comes from USDTRY.</li>
+</ol>
+<h3>Validation record</h3>
+<div id="vrec"></div>
+<h3>Limitations</h3>
+<ul id="caveats"><li>Risk readings not loaded.</li></ul>
+</section>
+
+<section class="part">
+<h2>Valuation lens: Bubble Methodology, monthly</h2>
+<ol>
+<li><b>Real price.</b> The monthly mean of daily closes, divided by that market&rsquo;s own CPI, then logged. Every market uses its <b>local</b> index and <b>local</b> CPI: no currency conversion, no special cases.</li>
+<li><b>Rolling trend.</b> For each month <i>t</i>, a straight line is fitted to the <i>W</i> months <b>ending at</b> <i>t</i>. Nothing after <i>t</i> is ever used.</li>
+<li><b>Leverage correction.</b> Month <i>t</i> is <b>removed from its own fit</b> before being measured against it. The last point of a linear fit is its highest-leverage point, so an uncorrected residual there is shrunk by <code>sqrt(1-h)</code>: about 16% at a 12-month window, under 1% at 240. Without this, z from different windows is not comparable.</li>
 <li><b>z.</b> The deviation divided by its own standard error, distributed <b>t(W&minus;3)</b> under a trend-stationary null.</li>
-<li><b>Threshold.</b> <code>zcrit(W)</code> carries the same tail probability as 2&sigma; on a normal at that window&rsquo;s degrees of freedom: 2.32 at W=12, 2.01 at W=360. A flat 2.0 would be a looser test on short windows.</li>
+<li><b>Threshold.</b> <code>zcrit(W)</code> carries the same tail probability as 2&sigma; on a normal at that window&rsquo;s degrees of freedom: 2.32 at W=12, 2.01 at W=360.</li>
 <li><b>State.</b> <i>Bubble</i> when z exceeds the threshold, <i>elevated</i> within 1 of it, otherwise <i>normal</i>.</li>
 </ol>
-
-<h2>The last reading is provisional</h2>
-<p>The series runs to the current month, so the newest reading is marked <b>provisional</b> and will move:</p>
-<ul>
-<li><b>The month is still trading.</b> Its level is the mean of the sessions so far, not of the whole month. Same quantity, noisier estimate.</li>
-<li><b>CPI publishes a month or two behind price.</b> Until it prints, the last published CPI is carried forward, which deflates those months as if inflation were zero. That overstates real price by exactly the inflation that has not been reported yet &mdash; immaterial at 2% a year, material in Turkey. The carry stops after three months and the month is dropped instead, so a dead CPI feed cannot quietly turn a nominal rally into a real one.</li>
-</ul>
-<p>Neither uses information from after the month it is stamped on, so the no-look-ahead rule still holds. A provisional month can cross the threshold and then uncross it when the real CPI lands.</p>
-<p>Readings are rebuilt once a day from the source feeds. If a feed fails, the last good copy is used and the page says so.</p>
-
-<h2>Window lengths</h2>
-<p>The Nasdaq Composite reads at a 7-year window, the other three at 10 years. These were chosen against criteria fixed before any results were read, led by a threshold-free measure: the rank correlation between z and subsequent real returns. The study is in <code>results/window_study.csv</code>, regenerated by <code>evaluate.py</code>.</p>
-<p>The original 20-year default was dropped. On the Nasdaq it was wrong-signed while flagging 14.5% of months &mdash; 6.4&times; the rate its own threshold claims &mdash; and on the FTSE 100 and BIST 100 it never fired at all.</p>
-
-<h2>The macro overlay</h2>
-<p>Real policy rate (negated), credit growth and curve slope, each ranked against its own trailing decade and oriented so <b>higher means looser</b>. The score averages whichever components exist for a market; a missing series is treated as missing, never as neutral.</p>
-<p>It is a <b>separate</b> signal. It never enters z, never changes the state, and is never averaged with z into a single number. z says <i>price is far above its own trend</i>; it cannot say <i>and credit is cheap</i>. The overlay carries that separately, so neither contaminates the other. It has <b>not</b> been tested for predictive power &mdash; it is context, and it is labelled as context.</p>
-
-<h2>Limitations</h2>
+<h3>The last reading is provisional</h3>
+<p>The series runs to the current month, so the newest reading is marked provisional. The month is still trading, and CPI publishes a month or two behind price; until it prints, the last published CPI is carried forward for at most three months. That overstates real price by the inflation not yet reported: immaterial at 2% a year, material in Turkey.</p>
+<h3>Window lengths</h3>
+<p>The Nasdaq Composite reads at a 7-year window, the other three at 10 years, chosen against criteria fixed before results were read: the rank correlation between z and subsequent real returns (<code>results/window_study.csv</code>). The original 20-year default was dropped: on the Nasdaq it was wrong-signed while flagging 6.4&times; the rate its own threshold claims.</p>
+<h3>The macro overlay</h3>
+<p>Real policy rate (negated), credit growth and curve slope, each ranked against its own trailing decade, higher meaning looser. It is a <b>separate</b> signal: it never enters z, never changes the state, and has not been tested for predictive power.</p>
+<h3>Limitations</h3>
 <ul>
 <li><b>Trend-stationarity is a strong assumption.</b> The test cannot separate a bubble from a structural break or a genuine repricing of earnings power.</li>
-<li><b>This is not a timing signal.</b> On the Nasdaq at a 20-year window the state turned on in 1995 &mdash; four years and roughly a 4&times; before the peak.</li>
-<li><b>No multiple-testing correction.</b> Eight windows across four markets over hundreds of months is a great many tests, and noise alone clears a 2&sigma; threshold about 2% of the time. The window-sensitivity strip exists to make that visible, not to let anyone shop for the window that says what they want.</li>
-<li><b>Asia is restricted, and still weak.</b> The Nikkei is evaluated from 1990 only: its 1970&ndash;89 re-rating ran the wrong way for two decades and left the full-sample reading wrong-signed. The trend is fitted on the restricted history, not merely displayed from it, so readings begin ten years after the cut. That restriction was chosen <i>after</i> seeing the result, which is why it is stated here and on the market itself. Even restricted, this reading carries less information about forward returns than the other three. Filtering does not fix it; every filter tested is in <code>results/filter_study.csv</code>.</li>
-<li><b>Headline CPI is a choice.</b> Asset prices and consumer prices are different objects.</li>
-<li><b>Turkish CPI is contested.</b> The official CBRT series is used.</li>
-<li><b>Turkey is scored in local CPI-deflated terms</b> like everywhere else. A USD-converted BIST looks very different; consistency was chosen over per-market tuning, because the moment one market gets a bespoke deflator the cross-market comparison stops meaning anything.</li>
+<li><b>This is not a timing signal.</b> On the Nasdaq at a 20-year window the state turned on in 1995, four years before the peak.</li>
+<li><b>No multiple-testing correction.</b> Eight windows across four markets over hundreds of months is a great many tests. The window-sensitivity strip exists to make that visible.</li>
+<li><b>The Nikkei is restricted to 1990 onward, and is still weak.</b> That restriction was chosen after seeing the result.</li>
+<li><b>Headline CPI is a choice, and Turkish CPI is contested.</b> The official series is used.</li>
 </ul>
-<p class="coda">This model measures statistical deviation from trend. It does not forecast returns.</p>
+</section>
+<p class="coda">These models measure statistical deviation and risk. They do not forecast returns and say nothing about what to do.</p>
 </article>
 </template>
 </body>
