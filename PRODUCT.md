@@ -45,7 +45,7 @@ turns a reading into advice. Two lenses today:
 
 ## Operating Context
 
-- Live URL: https://market-panel.breezeblocks.workers.dev (Cloudflare Worker `market-panel`, renamed from
+- Live URL: https://marketpanel.breezeblocks.workers.dev (Cloudflare Worker `marketpanel`, renamed from
   `bubble-methodology` on 2026-09-30).
 - Valuation data is built in GitHub Actions (`build.py` writes `site/data.json`) every day
   at 06:30 UTC, on every push and on demand, and deployed as an assets-only Cloudflare

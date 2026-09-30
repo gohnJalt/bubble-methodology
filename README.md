@@ -22,7 +22,7 @@ site works normally.
 
 ## Deploy
 
-Static site on **Cloudflare** (Workers static assets, `wrangler.jsonc`). Live at **https://market-panel.breezeblocks.workers.dev** (Worker `market-panel`; renamed from `bubble-methodology` on 2026-09-30). `.github/workflows/deploy.yml` runs daily, on
+Static site on **Cloudflare** (Workers static assets, `wrangler.jsonc`). Live at **https://marketpanel.breezeblocks.workers.dev** (Worker `marketpanel`; renamed from `bubble-methodology` on 2026-09-30). `.github/workflows/deploy.yml` runs daily, on
 every push to `main` and on demand: it rebuilds `site/data.json` from the live
 feeds and runs `wrangler deploy`. The parquet cache carries over between
 runs, so a feed that fails is served stale and flagged on the page.
