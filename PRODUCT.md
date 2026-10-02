@@ -12,8 +12,9 @@ The owner and a small desk (a few colleagues, occasionally leadership). They ope
 site after the Borsa Istanbul close, most days, to answer two questions quickly: how
 much can we lose tomorrow and is Turkish stress building (daily risk), and is any major
 index stretched far above its own real trend (monthly valuation). They are
-numerate and read VaR, ES, z-scores and percentiles without explanation, but they need
-the model, window and limits stated next to every number.
+finance people but not quantitative specialists (2026-10-02): main pages say in plain
+language what each chart or table shows; model names, validation and caveats live on
+Methodology for technical readers.
 
 ## Product Purpose
 

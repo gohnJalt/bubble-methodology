@@ -55,14 +55,22 @@ code { font:.85em ui-monospace, SFMono-Regular, Menlo, monospace; background:var
 .brand { font:600 1.0625rem/1 var(--sans); letter-spacing:-.01em; color:var(--ink); text-decoration:none; white-space:nowrap; }
 .issue { margin-left:auto; font-size:.8125rem; color:var(--ink3); white-space:nowrap; }
 .issue b { font-weight:500; color:var(--ink2); }
-nav.lenses { display:flex; gap:1.6rem; flex:1 1 auto; overflow-x:auto; min-width:0;
-  background:linear-gradient(to left, var(--paper) 30%, transparent) right / 2rem 100% no-repeat local,
-    radial-gradient(farthest-side at 100% 50%, var(--hair), transparent) right / .7rem 100% no-repeat scroll; }
-nav.lenses .grp { display:flex; gap:1.6rem; }
-nav.lenses a { font-size:.875rem; color:var(--ink3); text-decoration:none; padding-bottom:.4rem; white-space:nowrap;
+nav.lenses { display:flex; flex-wrap:wrap; align-items:baseline; gap:.4rem 1.6rem; flex:1 1 auto; min-width:0; }
+nav.lenses > a, .model > button { font:400 .875rem/1.55 var(--sans); color:var(--ink3); text-decoration:none; padding:0 0 .4rem;
+  white-space:nowrap; background:none; border:0; cursor:pointer;
   box-shadow:inset 0 -1px 0 transparent; transition:color 150ms ease, box-shadow 150ms ease; }
-nav.lenses a:hover { color:var(--ink); }
-nav.lenses a[aria-current="page"] { color:var(--ink); box-shadow:inset 0 -1px 0 var(--ink); }
+nav.lenses > a:hover, .model:hover > button, .model:focus-within > button { color:var(--ink); }
+nav.lenses > a[aria-current="page"], .model.on > button { color:var(--ink); box-shadow:inset 0 -1px 0 var(--ink); }
+.model { position:relative; }
+.model > button::after { content:""; display:inline-block; width:.3rem; height:.3rem; margin:0 0 .2rem .45rem;
+  border:solid currentColor; border-width:0 1px 1px 0; transform:rotate(45deg); }
+.model .menu { position:absolute; left:-.8rem; top:100%; z-index:5; min-width:11rem; padding:.4rem 0;
+  background:var(--paper); border-top:1px solid var(--rule); border-bottom:1px solid var(--hair);
+  visibility:hidden; opacity:0; transform:translateY(-.25rem); transition:opacity 150ms ease, transform 150ms ease, visibility 0s 150ms; }
+.model:hover .menu, .model:focus-within .menu { visibility:visible; opacity:1; transform:none; transition-delay:0s; }
+.model .menu a { display:block; padding:.4rem .8rem; font-size:.875rem; color:var(--ink2); text-decoration:none; white-space:nowrap; }
+.model .menu a:hover { background:var(--paper2); color:var(--ink); }
+.model .menu a[aria-current="page"] { color:var(--ink); font-weight:500; }
 
 main.wrap { padding-top:3.5rem; padding-bottom:5rem; }
 h1:focus { outline:none; }
@@ -103,8 +111,6 @@ a.kr:hover .kq { color:var(--ink); text-decoration:underline; text-underline-off
 .ex .t .n { color:var(--ink3); font-weight:400; font-size:.8125rem; margin-right:.5rem; }
 .ex .sub { font-size:.875rem; line-height:1.5; color:var(--ink3); margin:.25rem 0 0; max-width:74ch; }
 .ex .plot { margin-top:1rem; }
-.ex .src { font-size:.75rem; line-height:1.5; color:var(--ink3); margin:.6rem 0 0; }
-.ex .src b { font-weight:500; color:var(--ink3); }
 .ex.flash { animation:flash 1.6s ease-out; }
 @keyframes flash { from { background:var(--hl); box-shadow:0 0 0 .8rem var(--hl); } to { background:transparent; box-shadow:0 0 0 .8rem transparent; } }
 .row2 { display:grid; grid-template-columns:1fr 1fr; gap:4rem; }
@@ -112,13 +118,6 @@ a.kr:hover .kq { color:var(--ink); text-decoration:underline; text-underline-off
 .section { margin-top:6rem; padding-top:1.4rem; border-top:1px solid var(--hair); }
 .section > .page-head { margin-bottom:2rem; }
 
-.fn { font:500 .7em/1 var(--sans); vertical-align:super; color:var(--ink3); background:none; border:0; padding:0 .1em; cursor:pointer; }
-.fn:hover { color:var(--ink); text-decoration:underline; }
-.notes { margin-top:5rem; padding-top:1rem; border-top:1px solid var(--hair); max-width:84ch; }
-.notes h2 { font-size:.8125rem; font-weight:500; color:var(--ink3); letter-spacing:0; }
-.notes ol { margin:.5rem 0 0; padding-left:1.4rem; font-size:.8125rem; line-height:1.55; color:var(--ink3); }
-.notes li { margin:.35rem 0; padding:.1rem .3rem; transition:background 600ms ease; }
-.notes li.on { background:var(--hl); }
 
 /* tables: hairlines only */
 .tbl { overflow-x:auto; margin-top:1rem;
@@ -186,7 +185,7 @@ td .big.warn { font-weight:500; }
 @media (max-width:1000px) {
   .row2 { grid-template-columns:minmax(0,1fr); gap:4rem; }
   .mast-top { flex-wrap:wrap; gap:.9rem 2rem; }
-  nav.lenses { order:3; flex-basis:100%; }
+  nav.lenses { order:3; flex-basis:100%; gap:.4rem 1.3rem; }
   .krs { grid-template-columns:1fr 1fr; }
   .kr:nth-child(3) { padding-left:0; border-left:0; }
   .kr:nth-child(n+3) { border-top:1px solid var(--hair); }
@@ -195,6 +194,7 @@ td .big.warn { font-weight:500; }
   .wrap { padding:0 1rem; }
   .foot { background-size:calc(100% - 2rem) 1px; }
   .mast-top { padding-top:1.1rem; }
+  .model:last-of-type .menu { left:auto; right:-.8rem; }
   main.wrap { padding-top:2.2rem; }
   h1 { font-size:1.75rem; }
   .krs { margin-top:1.8rem; }
@@ -214,7 +214,7 @@ td .big.warn { font-weight:500; }
 <header class="mast wrap">
   <div class="mast-top">
     <a class="brand" href="#/" id="brand">Market Readings</a>
-    <nav class="lenses" id="nav" aria-label="Lenses"></nav>
+    <nav class="lenses" id="nav" aria-label="Models"></nav>
     <span class="issue" id="issue">&nbsp;</span>
   </div>
 </header>
@@ -226,7 +226,7 @@ const WINDOWS = [12, 24, 36, 60, 84, 120, 240, 360];
 const ORDER = ["turkey", "new_york", "london", "asia"];   // Turkey first: the only market with a daily lens
 const SERIES = { E:"XU100 (TRY)", USD:"XU100 (USD)", F:"USDTRY (long USD)" };
 const CFG = { displayModeBar:false, responsive:true };
-let V = null, R = null, VERR = null, RERR = null, NOTES = [], SYNC = [];
+let V = null, R = null, VERR = null, RERR = null, SYNC = [];
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -280,30 +280,23 @@ function route() {
 }
 const href = (page, win) => `#/${page}${win ? `?w=${win}` : ""}`;
 
+// Top nav names the models; hovering (or focusing) a model lists its markets.
 function nav({ page, win }) {
   const short = { "Nasdaq Composite":"Nasdaq" };
-  const vm = ORDER.filter(k => V && V.markets[k]).map(k => [k, short[V.markets[k].index] || V.markets[k].index]);
-  const g = (label, items) => `<div class="grp" aria-label="${label || "Pages"}">` +
-    items.map(([k, t]) => `<a href="${href(k, V && V.markets[k] ? win : null)}"${k === page ? ' aria-current="page"' : ""}>${esc(t)}</a>`).join("") + "</div>";
-  $("#nav").innerHTML = g("", [["", "Overview"]]) + g("Risk, daily", [["risk", "XU100 and lira"]]) +
-    (vm.length ? g("Valuation, monthly", vm) : "") + g("", [["method", "Methodology"]]);
+  const link = ([k, t]) => `<a href="${href(k, V && V.markets[k] ? win : null)}"${k === page ? ' aria-current="page"' : ""}>${esc(t)}</a>`;
+  const model = (name, items) => items.length ? `<div class="model${items.some(([k]) => k === page) ? " on" : ""}">` +
+    `<button type="button" aria-haspopup="true">${name}</button><div class="menu">${items.map(link).join("")}</div></div>` : "";
+  const bubbles = ORDER.filter(k => V && V.markets[k]).map(k => [k, short[V.markets[k].index] || V.markets[k].index]);
+  $("#nav").innerHTML = link(["", "Overview"]) + model("Regime Models", [["risk", "XU100 and lira"]]) +
+    model("Bubbles", bubbles) + link(["method", "Methodology"]);
 }
 
 // ---------------------------------------------------------------- exhibit scaffolding
-function fn(text) {   // a footnote: numbered per page, listed under Notes
-  NOTES.push(text);
-  return `<button type="button" class="fn" data-note="${NOTES.length}" aria-label="Note ${NOTES.length}">${NOTES.length}</button>`;
-}
-function exhibit(n, id, title, sub, body, src) {
+function exhibit(n, id, title, sub, body) {
   return `<figure class="ex" id="ex-${id}"><figcaption><div class="t"><span class="n">Exhibit ${n}</span>${title}</div>` +
-    (sub ? `<p class="sub">${sub}</p>` : "") + `</figcaption>${body}` +
-    (src ? `<p class="src">${src}</p>` : "") + "</figure>";
+    (sub ? `<p class="sub">${sub}</p>` : "") + `</figcaption>${body}</figure>`;
 }
 const plot = (id, label) => `<div class="plot" role="img" aria-label="${esc(label)}"><div id="${id}"></div></div>`;
-function notesBlock() {
-  return NOTES.length ? `<section class="notes" aria-label="Notes"><h2>Notes</h2><ol>` +
-    NOTES.map((t, i) => `<li id="note-${i + 1}">${t}</li>`).join("") + "</ol></section>" : "";
-}
 function riskStale() {
   if (!R) return "";
   const age = riskAge();
@@ -626,39 +619,36 @@ const ord = x => { const n = Math.round(x * 10) / 10, i = Math.floor(n) % 100;
   return `${n.toFixed(1)}${s}`; };
 
 function pageOverview(win) {
-  let html = `<h1 tabindex="-1">After the close</h1><p class="lede lede-front">Daily risk for XU100 and the lira beside a monthly real-trend test for four indices: ` +
-    `read separately, never combined, and not forecasts of returns.</p>` +
+  let html = `<h1 tabindex="-1">Where markets stand</h1><p class="lede lede-front">Daily risk for Turkish stocks and the lira, ` +
+    `and a monthly check on whether major indices look stretched. Each model is read on its own; none is a forecast.</p>` +
     riskStale() + valStale() +
     `<section class="krs" aria-label="Key readings">${keyReadings(win)}</section><div class="gap">`;
   html += R ? exhibit(1, "stress", "Turkish stress gauge, last two years",
-    `Where the XU100-in-USD volatility forecast ranks in its own history. Red spans: flag on; triangles: dated stress events. Every session shown is holdout or live; the dashed rule marks the live start.` +
-    fn("Stress gauge: MSGJ1 volatility forecast for XU100 in USD, ranked against its own expanding history. The flag turns on after 3 sessions above the 92.5th percentile. Rule fixed in the jump-model design, §7.8."),
-    plot("x-stress", "Stress percentile over the last two years with the 92.5 flag threshold"),
-    `<b>Source:</b> BIST via Yahoo Finance; USDTRY Bloomberg BFIX 18:00. <b>Model:</b> ${R.next.flag_model} (GJR-GARCH with jumps). ` +
-    `<b>Validation:</b> caught 7 of 7 holdout events, 0.30 false-alarm episodes a year.`) : "<div></div>";
+    `How tense the Turkish market is compared with its own past, from 0 (calmest) to 100 (most stressed). ` +
+    `Red bands are periods when the warning flag was on; triangles mark known crises.`,
+    plot("x-stress", "Stress percentile over the last two years with the 92.5 flag threshold")) : "<div></div>";
   html += "</div>";
   if (R) {
     html += `<div class="row2 gap">` +
       exhibit(2, "budget", "Loss budget for the next session",
-        `One-day log-return VaR and expected shortfall, lower tail only: the loss on a long position.${fn("For USDTRY the lower tail is the loss from holding dollars, i.e. the lira strengthening. The depreciation tail was not backtested and is not reported.")}`,
-        riskTable() + `<p class="tbl-note">Ten-day figures for XU100 are on the risk page and carry a live kill rule.</p>`,
-        `<b>Model:</b> ${esc(R.next.var_model)}, Student-t ν = ${R.next.nu}. <b>Validation:</b> 1-day VaR coverage passed the holdout; ES failed it on XU100 (TRY).`) +
-      exhibit(3, "breach", "Realised XU100 return against its 1% VaR, last 250 sessions",
-        `Bars are daily returns; red dots broke the VaR set at the close before; the diamond is the next session's VaR. All sessions shown are holdout or live.`,
-        plot("x-breach", "Daily XU100 returns against the 1% VaR line, breaches in red"),
-        `<b>Source:</b> BIST via Yahoo Finance. <b>Model:</b> ${esc(R.next.var_model)}; 1 breach in 100 sessions expected. <b>Validation:</b> holdout coverage passed, 2 of 12 rejections.`) + "</div>";
+        `How much each position could lose in the next session on a bad day: a 1-in-100 day (1%) and a 1-in-40 day (2.5%). ` +
+        `VaR is that loss; ES is the average loss on days that turn out even worse.`,
+        riskTable()) +
+      exhibit(3, "breach", "XU100 daily moves against the expected worst case, last year",
+        `Each bar is one day's actual move. The line is the 1-in-100 loss the model expected the evening before; ` +
+        `red dots are days that fell further. The diamond is the estimate for the next session.`,
+        plot("x-breach", "Daily XU100 returns against the 1% VaR line, breaches in red")) + "</div>";
   }
   if (V) {
     const { loaded, html:t } = valRows(win);
-    html += `<section class="section"><div class="page-head"><div><h2>Valuation, monthly</h2></div>${winControl(win)}</div>` +
+    html += `<section class="section"><div class="page-head"><div><h2>Bubbles, monthly</h2></div>${winControl(win)}</div>` +
       exhibit(4, "val", "Real price against its own trend, four indices",
-        `Each index deflated by its own CPI and measured against a rolling linear trend. z above the threshold is a bubble state; within 1 of it, elevated.`,
-        t + (loaded.length > 1 ? plot("x-cross", "z-score history for every index on one axis; stretches above threshold in red") : ""),
-        `<b>Source:</b> Yahoo Finance; FRED, ONS, e-Stat, CBRT EVDS. <b>Model:</b> Bubble Methodology, leverage-corrected rolling z, t-threshold. ` +
-        `<b>Validation:</b> windows chosen on pre-fixed criteria (rank correlation with forward real returns).`) + "</section>";
-    $("#main").innerHTML = html + notesBlock();
+        `Whether each index, after inflation, is trading unusually far above its own long-run trend. ` +
+        `Above the threshold reads as a bubble; close to it, elevated. Click a row for that market.`,
+        t + (loaded.length > 1 ? plot("x-cross", "z-score history for every index on one axis; stretches above threshold in red") : "")) + "</section>";
+    $("#main").innerHTML = html;
     if (loaded.length > 1) crossChart($("#x-cross"), loaded);
-  } else $("#main").innerHTML = html + notesBlock();
+  } else $("#main").innerHTML = html;
   if (R) {
     stressChart($("#x-stress"), Math.max(0, nSess() - 504), 330);
     varChart($("#x-breach"), "E", Math.max(0, nSess() - 250), 300);
@@ -668,13 +658,13 @@ function pageOverview(win) {
 function pageRisk(sel) {
   if (!R) {
     $("#main").innerHTML = `<h1 tabindex="-1">XU100 and the lira</h1><div class="callout err"><b>Risk readings could not be loaded.</b> ` +
-      `${RERR ? esc(RERR) + ". " : ""}They are published from the daily run after the BIST close; the valuation lens is unaffected.</div>`;
+      `${RERR ? esc(RERR) + ". " : ""}They are published from the daily run after the BIST close; the bubble readings are unaffected.</div>`;
     return;
   }
   const k = SERIES[sel] ? sel : "E", n = R.next;
   const segS = `<div class="ctl"><span class="lab" id="sl">Series</span><div class="seg" role="radiogroup" aria-labelledby="sl" id="ser">` +
     ["E", "USD", "F"].map(s => `<label><input type="radio" name="s" value="${s}"${s === k ? " checked" : ""}><span>${SERIES[s]}</span></label>`).join("") + "</div></div>";
-  const per = [["v", "Validation, 2013–19", "blind"], ["h", "Holdout, 2020–26", "seen once"], ["l", "Live", `since ${dayName(R.live0)}`]];
+  const per = [["v", "2013–19", "first test period"], ["h", "2020–26", "second test period"], ["l", "Live", `since ${dayName(R.live0)}`]];
   const btab = `<div class="tbl"><table><thead><tr><th class="l">Period</th><th>Sessions</th><th>1% breaches</th><th>Rate</th>` +
     `<th>2.5% breaches</th><th>Rate</th></tr></thead><tbody>` + per.map(([c, t, s]) => {
       const pr = periodRange(c); if (!pr) return "";
@@ -682,43 +672,39 @@ function pageRisk(sel) {
       const rt = x => x.n ? (100 * x.hit / x.n).toFixed(2) + "%" : "—";
       return `<tr><td>${t}<small>${s}</small></td><td class="num">${a.n}</td><td class="num">${a.hit}</td><td class="num">${rt(a)}</td>` +
         `<td class="num">${b.hit}</td><td class="num">${rt(b)}</td></tr>`;
-    }).join("") + `</tbody></table></div><p class="tbl-note">A calibrated 1% VaR breaks on about 1% of sessions, a 2.5% VaR on about 2.5%.</p>`;
+    }).join("") + `</tbody></table></div>`;
   const html = `<div class="page-head"><div><h1 tabindex="-1">XU100 and the lira</h1>` +
-    `<p class="lede">XU100 in lira and USDTRY modelled jointly, so risk in dollars includes the currency. Readings after the ` +
-    `${dayName(R.asof, true)} close, for the next session.</p></div></div>` + riskStale() +
+    `<p class="lede">Turkish stocks and the lira, modelled together so that dollar risk includes the currency. ` +
+    `Readings as of ${dayName(R.asof, true)}, for the next session.</p></div></div>` + riskStale() +
     `<div class="gap" style="margin-top:3rem">` +
     exhibit(1, "r-stress", "Stress gauge since 2013",
-      `Percentile of the XU100-in-USD volatility forecast; the flag turns on after ${R.m} sessions above ${(100 * R.tau).toFixed(1)}. ` +
-      `Triangles mark dated stress events${fn("Event list fixed before scoring (jump-model data/events.csv). Onset dates; some are approximate.")}. ` +
+      `How tense the Turkish market is compared with its own past (0 calmest, 100 most stressed). The warning flag turns on ` +
+      `after ${R.m} days in a row above ${(100 * R.tau).toFixed(1)}. Triangles mark known crises. ` +
       `Today: <b>${(100 * n.pct).toFixed(1)}</b>, ${n.flag ? "<b>flag on</b>" : "flag off"}.`,
-      plot("r-stress", "Stress percentile since 2013 with events, holdout period marked"),
-      `<b>Model:</b> ${n.flag_model}, refit every 21 sessions. <b>Validation:</b> holdout 7 of 7 events caught, median lag 2 sessions; ` +
-      `the 2016 coup was caught 6 sessions late.`) + "</div>" +
+      plot("r-stress", "Stress percentile since 2013 with events, holdout period marked")) + "</div>" +
     `<div class="row2 gap">` +
-    exhibit(2, "r-one", "One-day VaR and ES, next session", `Lower tail, log return.`, riskTable(),
-      `<b>Model:</b> ${esc(n.var_model)}, ν = ${n.nu}, fitted on ${n.fit_n.toLocaleString("en-GB")} sessions. Forecast daily sd: ` +
-      `XU100 TRY ${n.sd.E.toFixed(2)}%, USDTRY ${n.sd.F.toFixed(2)}%, XU100 USD ${n.sd.USD.toFixed(2)}%.`) +
+    exhibit(2, "r-one", "One-day VaR and ES, next session",
+      `How much each position could lose in the next session on a 1-in-100 or 1-in-40 bad day (VaR), ` +
+      `and the average loss on days that turn out even worse (ES).`, riskTable()) +
     exhibit(3, "r-ten", "Ten-day VaR and ES, XU100 only",
-      `Sum of the next ${R.horizon10} sessions. Not blind: chosen after its backtest was seen, so the only honest test is live.` +
-      fn(`Removed if, over its last 25 non-overlapping ${R.horizon10}-day windows, it breaks ≥ 2 times at 1% or ≥ 3 times at 2.5%. USDTRY failed the ten-day backtest and is never shown.`),
-      tenTable(), `<b>Model:</b> ${esc(n.var_model)} Monte Carlo over ${R.horizon10} sessions. <b>Validation:</b> backtest failed on USDTRY (§8.6); XU100 is not blind and under a live kill rule since ${dayName(R.live0)}.`) + "</div>" +
-    `<section class="section"><div class="page-head"><div><h2>Backtest</h2></div>${segS}</div>` +
-    exhibit(4, "r-var", `Realised return against 1% VaR, ${SERIES[k]}`,
-      `Every session since 2013, each against the VaR set at the previous close. Red dots are breaches.`,
-      plot("r-var", `Daily returns against the 1% VaR for ${SERIES[k]}`) + btab,
-      `<b>Validation:</b> holdout VaR coverage passed with 2 of 12 rejections (GJR-t benchmark: 7). USDTRY at 2.5% is conservative.`) +
+      `The same, over the next ${R.horizon10} trading days. Still on trial: it is withdrawn automatically if it misses too often.`,
+      tenTable()) + "</div>" +
+    `<section class="section"><div class="page-head"><div><h2>Track record</h2></div>${segS}</div>` +
+    exhibit(4, "r-var", `Daily moves against the expected worst case, ${SERIES[k]}`,
+      `Every day since 2013: the actual move against the 1-in-100 loss the model expected the evening before. ` +
+      `Red dots are days that fell further. A well-calibrated model is beaten on about 1 day in 100, which the table counts.`,
+      plot("r-var", `Daily returns against the 1% VaR for ${SERIES[k]}`) + btab) +
     "</section>" +
-    `<section class="section"><div class="page-head"><div><h2>Decomposition</h2></div></div><div class="row2">` +
+    `<section class="section"><div class="page-head"><div><h2>What drives the risk</h2></div></div><div class="row2">` +
     exhibit(5, "r-jump", "Jump probabilities, last two years",
-      `Probability that the session's return contained each kind of jump, given its size. FX-only jumps have stayed below 5% since December 2025.${fn("The robustness battery (§8.8) did not find statistical support for the jump component over a plain GJR model. Read these as “this return was large for its volatility”, not as proof of a jump.")}`,
-      plot("r-jump", "Probabilities of equity, FX and co-jumps per session"), `<b>Model:</b> ${esc(n.var_model)} jump posterior. <b>Validation:</b> the §8.8 battery did not support the jump component; descriptive only.`) +
+      `The chance that a day's move was a sudden jump rather than ordinary movement: in stocks alone, the lira alone, or both at once.`,
+      plot("r-jump", "Probabilities of equity, FX and co-jumps per session")) +
     exhibit(6, "r-fx", "Lira share of dollar risk",
-      `Share of the forecast XU100-in-USD variance that comes from USDTRY. When it rises, dollar losses are a currency story.`,
-      plot("r-fx", "Share of XU100-in-USD variance due to USDTRY"), `<b>Model:</b> ${esc(n.var_model)} forecast variance, Euler allocation. <b>Validation:</b> not tested; descriptive.`) +
+      `How much of the risk in dollar terms comes from the lira rather than from the stock market. When it rises, dollar losses are mostly a currency story.`,
+      plot("r-fx", "Share of XU100-in-USD variance due to USDTRY")) +
     "</div></section>" +
-    `<section class="section"><h2>Validation record</h2><p class="lede">Criteria were fixed before each study ran. Failures stay on this page.</p>${validation()}` +
-    `<h3 style="margin-top:2rem">Known limitations</h3><ul class="prose" style="padding-left:1.2rem">${R.caveats.map(c => `<li>${esc(c)}</li>`).join("")}</ul></section>`;
-  $("#main").innerHTML = html + notesBlock();
+    `<p class="lede" style="margin-top:4rem">How the model is built and tested, including what failed: <a href="#/method">Methodology</a>.</p>`;
+  $("#main").innerHTML = html;
   stressChart($("#r-stress"), 0, 380, { periods:true, selector:true, pad:20 });
   varChart($("#r-var"), k, 0, 340);
   jumpChart($("#r-jump"), Math.max(0, nSess() - 504), 330);
@@ -747,11 +733,12 @@ function pageMarket(m, win) {
   }
   const r = reading(m, win);
   const span = m.start ? `, history from ${m.start.slice(0, 4)}` : "";
-  let html = `<div class="page-head"><div><h1 tabindex="-1">${esc(m.index)}</h1><p class="lede">Valuation lens, monthly. Real ${m.ccy}, ` +
-    `deflated by local CPI${r ? `, against a ${wlabel(r.w)} rolling trend` : ""}${span}.</p></div>${winControl(win, m)}</div>` + valStale() +
-    (m.note ? `<div class="callout">${m.note} The era breakdown is in <code>results/asia_eras.csv</code>.</div>` : "") +
-    (m.key === "turkey" && R ? `<div class="callout">BIST 100 also has a daily lens: ` +
-      `<a href="#/risk">XU100 and lira risk</a>, as of the ${dayName(R.asof)} close.</div>` : "");
+  let html = `<div class="page-head"><div><h1 tabindex="-1">${esc(m.index)}</h1><p class="lede">Bubbles, monthly. Prices after ${m.ccy} inflation` +
+    `${r ? `, compared with their ${wlabel(r.w)} trend` : ""}${span}.</p></div>${winControl(win, m)}</div>` + valStale() +
+    (m.weak ? `<div class="callout">Readings start in ${(m.start || "1990").slice(0, 4)} and are the least reliable of the four markets. ` +
+      `<a href="#/method">Methodology</a> explains why.</div>` : "") +
+    (m.key === "turkey" && R ? `<div class="callout">BIST 100 is also covered daily by the Regime Models: ` +
+      `<a href="#/risk">XU100 and lira risk</a>, as of ${dayName(R.asof)}.</div>` : "");
   if (!r) {
     const longest = Math.max(...Object.keys(m.windows).map(Number));
     $("#main").innerHTML = html + `<div class="callout err">${esc(m.index)} has ${Math.floor(m.months.length / 12)} years of real price ` +
@@ -764,31 +751,28 @@ function pageMarket(m, win) {
     `<td class="num">${fin(ov) ? sign(ov) : "—"}<small>${fin(ov) ? band(ov) : "not available"}</small></td>` +
     `<td class="num">${monthName(m.months.at(-1))}<small>${m.prov ? "provisional" : "settled"}</small></td></tr></tbody></table></div>` +
     `<div class="gap">` + exhibit(1, "v-main", `Real price and its rolling trend`,
-      `Log real price against the trend fitted to the ${r.w} months before each month; below, z against its threshold. Red spans are bubble episodes.` +
-      fn("Each month is removed from its own trend fit before being measured against it (leverage correction), so z is comparable across windows. Nothing after month t is used for month t."),
-      plot("main-chart", `${m.index} log real price against its rolling trend, with z below`),
-      `<b>Source:</b> Yahoo Finance; ${esc(m.ccy)} CPI. <b>Model:</b> Bubble Methodology, t(${r.w - 3}) threshold. <b>Validation:</b> ${m.weak ? "weakest market; restricted after seeing the result" : "window chosen on pre-fixed criteria"} (results/window_study.csv).`) + "</div>" +
+      `The index after inflation (dark line) against its own trend (grey). The lower panel shows how far above trend it is; ` +
+      `red bands are past bubble periods.`,
+      plot("main-chart", `${m.index} log real price against its rolling trend, with z below`)) + "</div>" +
     `<div class="row2 gap">` +
-    exhibit(2, "v-ep", "Episodes", `A run of flagged months is one event. Drawdown runs from the episode's real peak over the following 24 months.`,
+    exhibit(2, "v-ep", "Past bubble periods", `Each time the index went above its threshold, and how far it fell (after inflation) within the next two years.`,
       r.episodes.length ? `<div class="tbl"><table><thead><tr><th class="l">Entered</th><th>z at entry</th><th>Months</th><th>Real drawdown</th></tr></thead><tbody>` +
         r.episodes.map(e => `<tr${e.open ? ' class="open"' : ""}><td>${e.entered}</td><td class="num">${e.z.toFixed(2)}</td>` +
           `<td class="num">${e.months}${e.running ? "<small>running</small>" : ""}</td>` +
           `<td class="num">${e.dd === null ? "—" : pc(e.dd, 1)}${e.open ? "<small>so far</small>" : ""}</td></tr>`).join("") + "</tbody></table></div>" +
-        (r.episodes.some(e => e.open) ? `<p class="tbl-note">Grey rows are not settled: fewer than 24 months have passed since the episode ended.</p>` : "")
-      : `<p class="tbl-note">No episode at this window: the reading has never crossed its threshold.</p>`,
-      `<b>Source:</b> the model's own episode list, real prices. <b>Validation:</b> descriptive; drawdowns are outcomes, not a test.`) +
-    exhibit(3, "v-macro", "Macro overlay components",
-      `A separate context signal. It does not enter z and does not change the state. Higher means looser.`,
+        (r.episodes.some(e => e.open) ? `<p class="tbl-note">Grey rows are too recent to judge.</p>` : "")
+      : `<p class="tbl-note">No bubble period at this window: the reading has never crossed its threshold.</p>`) +
+    exhibit(3, "v-macro", "Background conditions",
+      `Interest rates, credit growth and the yield curve. Higher means easier money. Shown for context only; it does not change the bubble reading.`,
       Object.keys(m.comps).length ? Object.entries(m.comps).map(([kk, c]) =>
         `<div class="plot"><div class="t" style="font-size:.8125rem;font-weight:600;color:var(--ink2);margin:.2rem 0">` +
         `${kk.replace("_", " ")}: <span class="num">${lastFin(c.v).toFixed(2)}</span></div><div id="comp-${kk}"></div></div>`).join("")
       : `<p class="tbl-note">No macro components are published for this market in the sources used here.</p>`,
-      `<b>Status:</b> not tested for predictive power; context only.`) + "</div>" +
-    `<div class="gap">` + exhibit(4, "v-heat", "Window sensitivity",
-      `Bubble state by month at every window length. The window is the largest judgement call in the model, so it is shown rather than hidden.`,
-      plot("heat", "Bubble state by month for each window length"),
-      `<b>Model:</b> Bubble Methodology at every window. <b>Validation:</b> no multiple-testing correction across windows; see Methodology.`) + "</div>";
-  $("#main").innerHTML = html + notesBlock();
+      ) + "</div>" +
+    `<div class="gap">` + exhibit(4, "v-heat", "Does the reading depend on the trend length?",
+      `The bubble reading by month when the trend is measured over shorter or longer periods. Red means bubble.`,
+      plot("heat", "Bubble state by month for each window length")) + "</div>";
+  $("#main").innerHTML = html;
   mainChart($("#main-chart"), m, r);
   Object.entries(m.comps).forEach(([kk, c]) => compChart($(`#comp-${kk}`), c));
   heatChart($("#heat"), m);
@@ -806,7 +790,7 @@ function pageMethod() {
 let lastPage = null;
 function render() {
   const rt = route();
-  NOTES = []; SYNC = [];
+  SYNC = [];
   nav(rt);
   const m = V && V.markets[rt.page];
   if (rt.page === "method") pageMethod();
@@ -819,12 +803,6 @@ function render() {
 }
 
 document.addEventListener("click", e => {
-  const n = e.target.closest(".fn");
-  if (n) {
-    const li = document.getElementById("note-" + n.dataset.note);
-    if (li) { li.scrollIntoView({ behavior:"smooth", block:"center" }); li.classList.add("on"); setTimeout(() => li.classList.remove("on"), 1800); }
-    return;
-  }
   const x = e.target.closest("[data-ex]");
   if (x) {
     e.preventDefault();
@@ -864,7 +842,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     $("#main").innerHTML = `<h1>${NAME}</h1><div class="callout err"><b>No readings could be loaded.</b> Valuation: ${esc(VERR)}. Risk: ${esc(RERR)}. Reload to try again.</div>`;
     return;
   }
-  $("#issue").innerHTML = R ? `After the <b>${dayName(R.asof)}</b> close` : `Valuation rebuilt ${esc(V.built)}`;
+  $("#issue").innerHTML = R ? `As of <b>${dayName(R.asof)}</b>` : `Valuation rebuilt ${esc(V.built)}`;
   $("#foot").innerHTML = `<span>${NAME}. Statistical readings, not advice or forecasts of returns.</span>` +
     `<span>${R ? `Risk published ${esc(R.built)}` : "Risk unavailable"} · ${V ? `Valuation rebuilt ${esc(V.built)}` : "Valuation unavailable"}</span>`;
   render();
@@ -877,7 +855,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 <p class="lede">Two lenses, each validated on its own terms. They are shown side by side and never blended, so one model's failure cannot hide inside another's number.</p>
 
 <section class="part">
-<h2>Risk lens: XU100 and the lira, daily</h2>
+<h2>Regime Models: XU100 and the lira, daily</h2>
 <ol>
 <li><b>What is modelled.</b> Daily log returns of XU100 in lira and of USDTRY, jointly, from August 2008. USDTRY is the Bloomberg BFIX 18:00 Istanbul fixing, matched to the BIST close. XU100 in dollars is the lira return minus the USDTRY return.</li>
 <li><b>Model.</b> A bivariate GJR-GARCH with jumps: equity-only, FX-only and simultaneous co-jumps. A regime-switching version was built and tested; information criteria chose a single regime, and extra regimes on top of GARCH were not identifiable. VaR and ES use Student-t components (MSGJ1-t); the stress flag uses the Gaussian model (MSGJ1). Both refit every 21 sessions.</li>
@@ -893,7 +871,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 </section>
 
 <section class="part">
-<h2>Valuation lens: Bubble Methodology, monthly</h2>
+<h2>Bubbles: the Bubble Methodology, monthly</h2>
 <ol>
 <li><b>Real price.</b> The monthly mean of daily closes, divided by that market&rsquo;s own CPI, then logged. Every market uses its <b>local</b> index and <b>local</b> CPI: no currency conversion, no special cases.</li>
 <li><b>Rolling trend.</b> For each month <i>t</i>, a straight line is fitted to the <i>W</i> months <b>ending at</b> <i>t</i>. Nothing after <i>t</i> is ever used.</li>
