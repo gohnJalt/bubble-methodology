@@ -59,7 +59,7 @@ nav.lenses { display:flex; flex-wrap:wrap; align-items:baseline; gap:.4rem 1.6re
 nav.lenses > a, .model > button { font:400 .875rem/1.55 var(--sans); color:var(--ink3); text-decoration:none; padding:0 0 .4rem;
   white-space:nowrap; background:none; border:0; cursor:pointer;
   box-shadow:inset 0 -1px 0 transparent; transition:color 150ms ease, box-shadow 150ms ease; }
-nav.lenses > a:hover, .model:hover > button, .model:focus-within > button { color:var(--ink); }
+nav.lenses > a:hover, .model.open > button { color:var(--ink); }
 nav.lenses > a[aria-current="page"], .model.on > button { color:var(--ink); box-shadow:inset 0 -1px 0 var(--ink); }
 .model { position:relative; }
 .model > button::after { content:""; display:inline-block; width:.3rem; height:.3rem; margin:0 0 .2rem .45rem;
@@ -67,7 +67,11 @@ nav.lenses > a[aria-current="page"], .model.on > button { color:var(--ink); box-
 .model .menu { position:absolute; left:-.8rem; top:100%; z-index:5; min-width:11rem; padding:.4rem 0;
   background:var(--paper); border-top:1px solid var(--rule); border-bottom:1px solid var(--hair);
   visibility:hidden; opacity:0; transform:translateY(-.25rem); transition:opacity 150ms ease, transform 150ms ease, visibility 0s 150ms; }
-.model:hover .menu, .model:focus-within .menu { visibility:visible; opacity:1; transform:none; transition-delay:0s; }
+.model.open .menu { visibility:visible; opacity:1; transform:none; transition-delay:0s; }
+@media (hover:hover) {
+  .model:hover > button { color:var(--ink); }
+  .model:hover .menu { visibility:visible; opacity:1; transform:none; transition-delay:0s; }
+}
 .model .menu a { display:block; padding:.4rem .8rem; font-size:.875rem; color:var(--ink2); text-decoration:none; white-space:nowrap; }
 .model .menu a:hover { background:var(--paper2); color:var(--ink); }
 .model .menu a[aria-current="page"] { color:var(--ink); font-weight:500; }
@@ -77,7 +81,7 @@ h1:focus { outline:none; }
 h1, h2, h3 { margin:0; font-weight:500; letter-spacing:-.015em; text-wrap:balance; }
 h1 { font-size:2.125rem; line-height:1.12; letter-spacing:-.025em; }
 h2 { font-size:1.25rem; line-height:1.25; }
-.lede { font-size:.9375rem; line-height:1.55; color:var(--ink3); max-width:64ch; margin:.5rem 0 0; }
+.lede { font-size:.9375rem; line-height:1.55; color:var(--ink3); max-width:58ch; margin:.5rem 0 0; }
 .num { font-variant-numeric:tabular-nums; }
 .muted { color:var(--ink3); }
 .page-head { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:1rem 2rem; align-items:end; }
@@ -94,6 +98,7 @@ a.kr:hover .kq { color:var(--ink); text-decoration:underline; text-underline-off
 .kv small { font-size:.8125rem; font-weight:400; letter-spacing:0; color:var(--ink3); margin-left:.3rem; }
 .kv.alert { color:var(--red); }
 .kn { font-size:.8125rem; color:var(--ink3); margin-top:.3rem; }
+.kt { font-size:.8125rem; font-weight:500; }
 .kr .err-line { font-size:.875rem; color:var(--red); margin-top:.9rem; }
 
 /* state: a drawn circle plus the word; filled red only when a threshold is crossed */
@@ -109,7 +114,7 @@ a.kr:hover .kq { color:var(--ink); text-decoration:underline; text-underline-off
 .ex figcaption { display:block; }
 .ex .t { font-size:.9375rem; font-weight:500; line-height:1.35; }
 .ex .t .n { color:var(--ink3); font-weight:400; font-size:.8125rem; margin-right:.5rem; }
-.ex .sub { font-size:.875rem; line-height:1.5; color:var(--ink3); margin:.25rem 0 0; max-width:74ch; }
+.ex .sub { font-size:.875rem; line-height:1.5; color:var(--ink3); margin:.25rem 0 0; max-width:62ch; }
 .ex .plot { margin-top:1rem; }
 .ex.flash { animation:flash 1.6s ease-out; }
 @keyframes flash { from { background:var(--hl); box-shadow:0 0 0 .8rem var(--hl); } to { background:transparent; box-shadow:0 0 0 .8rem transparent; } }
@@ -157,6 +162,11 @@ td .big.warn { font-weight:500; }
 .seg input:disabled + span { color:var(--hair); }
 .ctl { display:flex; flex-direction:column; gap:.3rem; align-items:flex-end; }
 .ctl .lab { font-size:.75rem; color:var(--ink3); }
+.sel { font:400 .8125rem/1.4 var(--sans); color:var(--ink); background:transparent; border:0; border-bottom:1px solid var(--ink);
+  border-radius:0; padding:.3rem 1.3rem .3rem 0; cursor:pointer; -webkit-appearance:none; appearance:none;
+  background:linear-gradient(45deg, transparent 50%, currentColor 50%) right .55rem top 55% / .3rem .3rem no-repeat,
+    linear-gradient(-45deg, transparent 50%, currentColor 50%) right .25rem top 55% / .3rem .3rem no-repeat; }
+.sel option { background:var(--paper); color:var(--ink); }
 
 .callout { font-size:.875rem; line-height:1.5; color:var(--ink); background:var(--paper2); padding:.8rem 1rem;
   margin-top:1.2rem; max-width:84ch; }
@@ -226,6 +236,7 @@ const WINDOWS = [12, 24, 36, 60, 84, 120, 240, 360];
 const ORDER = ["turkey", "new_york", "london", "asia"];   // Turkey first: the only market with a daily lens
 const SERIES = { E:"XU100 (TRY)", USD:"XU100 (USD)", F:"USDTRY (long USD)" };
 const CFG = { displayModeBar:false, responsive:true };
+const COMP = { real_rate:"the real interest rate", credit:"credit growth", curve:"the yield curve" };
 let V = null, R = null, VERR = null, RERR = null, SYNC = [];
 
 const $ = s => document.querySelector(s);
@@ -233,6 +244,8 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":
 const fin = x => x !== null && x !== undefined && Number.isFinite(x);
 const lastFin = a => { for (let i = a.length - 1; i >= 0; i--) if (fin(a[i])) return a[i]; return NaN; };
 const minus = s => s.replace(/^-/, "−");
+const cap = s => s.replace(/^the /, "").replace(/^./, c => c.toUpperCase());
+const listAnd = a => (a.length > 1 ? a.slice(0, -1).join(", ") + " and " + a.at(-1) : a[0] || "").replace(/^./, c => c.toUpperCase());
 const sign = x => (x >= 0 ? "+" : "−") + Math.abs(x).toFixed(2);
 const pc = (x, nd = 2) => fin(x) ? minus(x.toFixed(nd)) + "%" : "—";
 const wlabel = w => w >= 12 ? `${w / 12}y` : `${w}m`;
@@ -246,7 +259,7 @@ function state(z, crit) {   // 'elevated' is within 1 of the threshold
   if (!fin(z)) return "n/a";
   return z > crit ? "bubble" : z > crit - 1 ? "elevated" : "normal";
 }
-const band = x => !fin(x) ? "n/a" : x < -1 ? "tight" : x < 1 ? "neutral" : "loose";
+const band = x => !fin(x) ? "n/a" : x < -1 ? "tight money" : x < 1 ? "neutral" : "easy money";
 const stCls = s => ({ bubble:"alert", elevated:"warn", normal:"ok" })[s] || "na";
 const st = (s, word) => `<span class="st ${stCls(s)}">${esc(word || s)}</span>`;
 function reading(m, win) { const w = win || m.window, r = m.windows[w]; return r ? { w, ...r } : null; }
@@ -285,9 +298,9 @@ function nav({ page, win }) {
   const short = { "Nasdaq Composite":"Nasdaq" };
   const link = ([k, t]) => `<a href="${href(k, V && V.markets[k] ? win : null)}"${k === page ? ' aria-current="page"' : ""}>${esc(t)}</a>`;
   const model = (name, items) => items.length ? `<div class="model${items.some(([k]) => k === page) ? " on" : ""}">` +
-    `<button type="button" aria-haspopup="true">${name}</button><div class="menu">${items.map(link).join("")}</div></div>` : "";
+    `<button type="button" aria-haspopup="true" aria-expanded="false">${name}</button><div class="menu">${items.map(link).join("")}</div></div>` : "";
   const bubbles = ORDER.filter(k => V && V.markets[k]).map(k => [k, short[V.markets[k].index] || V.markets[k].index]);
-  $("#nav").innerHTML = link(["", "Overview"]) + model("Regime Models", [["risk", "XU100 and lira"]]) +
+  $("#nav").innerHTML = link(["", "Overview"]) + model("Regime Models", [["risk", "XU100 and the lira"]]) +
     model("Bubbles", bubbles) + link(["method", "Methodology"]);
 }
 
@@ -346,7 +359,7 @@ function periodMarks(x0) {   // holdout span (seen once) and the live start, on 
     shapes.push({ type:"rect", xref:"x", x0:a, x1:h.date[ho[1] - 1], yref:"paper", y0:0, y1:1, fillcolor:c.grid,
       opacity:.9, line:{ width:0 }, layer:"below" });
     anns.push({ xref:"x", x:a, yref:"paper", y:1, xanchor:"left", yanchor:"top", showarrow:false,
-      text:"holdout, seen once", font:{ size:11, color:c.ink2 }, bgcolor:c.paper, borderpad:2 });
+      text:"second test period", font:{ size:11, color:c.ink2 }, bgcolor:c.paper, borderpad:2 });
   }
   shapes.push({ type:"line", xref:"x", x0:R.live0, x1:R.live0, yref:"paper", y0:0, y1:1, line:{ color:c.ink3, width:1, dash:"dash" } });
   anns.push({ xref:"x", x:R.live0, yref:"paper", y:0, xanchor:"right", yanchor:"bottom", showarrow:false,
@@ -391,7 +404,7 @@ function stressChart(el, from, height, opts = {}) {
     ...flagged.map(([a, b]) => ({ type:"rect", xref:"x", x0:a, x1:b, yref:"paper", y0:0, y1:1, fillcolor:c.red,
       opacity:.24, line:{ width:0 }, layer:"below" }))];
   const anns = [cr.ann, { xref:"paper", x:0, y:100 * R.tau, xanchor:"left", yanchor:"bottom", showarrow:false,
-    text:`flag threshold ${(100 * R.tau).toFixed(1)}, ${R.m} sessions`, font:{ size:11, color:c.ink2 }, bgcolor:c.paper, borderpad:2 }];
+    text:`flag line ${(100 * R.tau).toFixed(1)}, ${R.m} days in a row`, font:{ size:11, color:c.ink2 }, bgcolor:c.paper, borderpad:2 }];
   const pm = periodMarks(x[0]);
   shapes.unshift(...pm.shapes); anns.push(...pm.anns);
   const ev = (R.events || []).filter(e => e.onset >= x[0]);
@@ -399,15 +412,15 @@ function stressChart(el, from, height, opts = {}) {
   if (ev.length) traces.push({ x:ev.map(e => e.onset), y:ev.map(() => 103), mode:"markers", name:"event",
     marker:{ symbol:"triangle-down", size:7, color:c.ink2 }, text:ev.map(e => e.event), hovertemplate:"%{text}<extra></extra>" });
   const L = layout(height, { shapes, annotations:anns });
-  L.yaxis = { ...L.yaxis, range:[0, 106], tickvals:[0, 25, 50, 75, 100], title:{ text:"percentile", font:{ size:11, color:c.ink3 } } };
+  L.yaxis = { ...L.yaxis, range:[0, 106], tickvals:[0, 25, 50, 75, 100], title:{ text:"stress, 0 to 100", font:{ size:11, color:c.ink3 } } };
   L.xaxis.range = [x[0], nextDay(R.asof, opts.pad || 6)];
   if (opts.selector) L.xaxis.rangeselector = selector([["1y", 1], ["5y", 5]]);
   draw(el, traces, L, true);
 }
 function selector(list) {
   const c = C();
-  return { x:1, xanchor:"right", y:1.02, yanchor:"bottom", bgcolor:c.paper, activecolor:c.hair, bordercolor:c.rule,
-    borderwidth:1, font:{ size:11, color:c.ink2 },
+  return { x:1, xanchor:"right", y:1.02, yanchor:"bottom", bgcolor:c.paper, activecolor:c.grid, borderwidth:0,
+    font:{ size:11, color:c.ink2 },
     buttons:[...list.map(([label, count]) => ({ step:"year", count, label })), { step:"all", label:"all" }] };
 }
 function nextDay(d, n) { const t = new Date(d + "T12:00:00Z"); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10); }
@@ -419,31 +432,30 @@ function varChart(el, k, from, height) {
   const cr = closeRule(R.asof, "last close");
   const bx = x.filter((_, i) => hit[i]), by = r.filter((_, i) => hit[i]);
   const traces = [
-    { x, y:r, type:"bar", name:"realised return", marker:{ color:c.bar, line:{ width:0 } }, hovertemplate:"%{y:.2f}%" },
-    { x:bx, y:by, mode:"markers", name:"breach", marker:{ color:c.red, size:x.length > 600 ? 5 : 7, line:{ color:c.paper, width:1 } },
-      hovertemplate:"breach %{y:.2f}%<extra></extra>" },
-    { x, y:v, name:"1% VaR", line:{ color:c.ink, width:1.2, shape:"hv" }, hovertemplate:"%{y:.2f}%" },
-    { x:[nx], y:[f], mode:"markers+text", name:"next session", marker:{ color:c.ink, size:8, symbol:"diamond" },
-      text:[`next ${pc(f)}`], textposition:"bottom left", textfont:{ size:11, color:c.ink }, hovertemplate:"%{y:.2f}%" },
+    { x, y:r, type:"bar", name:"daily move", marker:{ color:c.bar, line:{ width:0 } }, hovertemplate:"%{y:.2f}%" },
+    { x:bx, y:by, mode:"markers", name:"fell further", marker:{ color:c.red, size:x.length > 600 ? 5 : 7, line:{ color:c.paper, width:1 } },
+      hovertemplate:"fell further %{y:.2f}%<extra></extra>" },
+    { x, y:v, name:"1-in-100 line", line:{ color:c.ink, width:1.2, shape:"hv" }, hovertemplate:"%{y:.2f}%" },
+    { x:[nx], y:[f], mode:"markers", name:"next session", marker:{ color:c.ink, size:8, symbol:"diamond" }, hovertemplate:"%{y:.2f}%" },
   ];
   const pm = periodMarks(x[0]);
   const L = layout(height, { shapes:[...pm.shapes, cr.shape, hline(0, c.hair, "solid")], annotations:[...pm.anns, cr.ann],
     bargap:x.length > 600 ? .4 : .15 });
-  L.yaxis = { ...L.yaxis, ticksuffix:"%", title:{ text:"log return", font:{ size:11, color:c.ink3 } } };
+  L.yaxis = { ...L.yaxis, ticksuffix:"%", title:{ text:"daily move", font:{ size:11, color:c.ink3 } } };
   L.xaxis.range = [x[0], nextDay(R.asof, 8)];
   draw(el, traces, L, true);
 }
 
 function jumpChart(el, from, height) {
   const c = C(), h = H(), x = h.date.slice(from), cr = closeRule(R.asof, "last close");
-  const lab = { E:"equity-only jump", F:"FX-only jump", C:"co-jump" }, col = { E:c.ink, F:c.ink3, C:c.ink2 };
+  const lab = { E:"stocks-only jump", F:"lira-only jump", C:"both at once" }, col = { E:c.ink, F:c.ink3, C:c.ink2 };
   const traces = ["E", "F", "C"].map((k, i) => ({ x, y:h[`pj_${k}`].slice(from).map(v => fin(v) ? 100 * v : null),
     yaxis:i ? `y${i + 1}` : "y", type:"bar", name:lab[k], marker:{ color:col[k] }, hovertemplate:"%{y:.1f}%" }));
   const rule = d => ({ type:"line", xref:"x", x0:R.asof, x1:R.asof, yref:d, y0:0, y1:1, line:{ color:c.ink, width:1 } });
   const L = layout(height, { shapes:[rule("y domain"), rule("y2 domain"), rule("y3 domain")], annotations:[cr.ann], bargap:0 });
   const ax = (d, t) => ({ ...L.yaxis, domain:d, range:[0, 100], tickvals:[0, 50, 100], ticksuffix:"%",
     title:{ text:t, font:{ size:11, color:c.ink3 } } });
-  L.yaxis = ax([.69, 1], "equity"); L.yaxis2 = ax([.345, .655], "FX"); L.yaxis3 = ax([0, .31], "co-jump");
+  L.yaxis = ax([.69, 1], "stocks"); L.yaxis2 = ax([.345, .655], "lira"); L.yaxis3 = ax([0, .31], "both");
   L.xaxis = { ...L.xaxis, anchor:"y3", range:[x[0], nextDay(R.asof, 6)] };
   draw(el, traces, L, true);
 }
@@ -451,7 +463,7 @@ function jumpChart(el, from, height) {
 function fxChart(el, from, height) {
   const c = C(), h = H(), x = h.date.slice(from), cr = closeRule(R.asof, "last close");
   const L = layout(height, { shapes:[cr.shape], annotations:[cr.ann] });
-  L.yaxis = { ...L.yaxis, ticksuffix:"%", rangemode:"tozero", title:{ text:"share of variance", font:{ size:11, color:c.ink3 } } };
+  L.yaxis = { ...L.yaxis, ticksuffix:"%", rangemode:"tozero", title:{ text:"lira share of risk", font:{ size:11, color:c.ink3 } } };
   L.xaxis.range = [x[0], nextDay(R.asof, 6)];
   L.xaxis.rangeselector = selector([["2y", 2], ["5y", 5]]);
   draw(el, [{ x, y:h.fx_share.slice(from).map(v => fin(v) ? 100 * v : null), line:{ color:c.series, width:1.2 },
@@ -473,10 +485,10 @@ function mainChart(el, m, r) {
   const c = C(), x = m.months, h = "%{y:.2f}";
   const traces = [
     { x, y:r.trend, name:"trend", line:{ color:c.ink3, width:1 }, hovertemplate:h },
-    { x, y:r.upper, name:`trend + ${r.crit.toFixed(2)} sd`, line:{ color:c.ink2, width:1, dash:"dot" },
+    { x, y:r.upper, name:"bubble line", line:{ color:c.ink2, width:1, dash:"dot" },
       fill:"tonexty", fillcolor:c.grid, hovertemplate:h },
-    { x, y:m.p, name:"log real price", line:{ color:c.ink, width:1.5 }, hovertemplate:h },
-    { x, y:r.z, name:"z", yaxis:"y2", line:{ color:c.ink2, width:1.1 }, hovertemplate:h },
+    { x, y:m.p, name:"price after inflation", line:{ color:c.ink, width:1.5 }, hovertemplate:h },
+    { x, y:r.z, name:"distance above trend", yaxis:"y2", line:{ color:c.ink2, width:1.1 }, hovertemplate:h },
   ];
   const first = x[r.z.findIndex(fin)];
   const shapes = [hline(r.crit, c.ink, "dot", "y2"), hline(0, c.hair, "solid", "y2"),
@@ -484,9 +496,9 @@ function mainChart(el, m, r) {
       fillcolor:c.red, opacity:.13, line:{ width:0 }, layer:"below" }))];
   const L = layout(560, { showlegend:true, shapes, margin:{ l:46, r:12, t:34, b:30 },
     annotations:[{ xref:"paper", yref:"y2 domain", x:0, y:1, xanchor:"left", yanchor:"bottom", showarrow:false,
-      text:`${wlabel(r.w)} window, threshold ${r.crit.toFixed(2)}`, font:{ size:11, color:c.ink2 }, bgcolor:c.paper }] });
-  L.yaxis = { ...L.yaxis, domain:[.32, 1], title:{ text:`log real price (${m.ccy}, CPI-deflated)`, font:{ size:11, color:c.ink3 } } };
-  L.yaxis2 = { ...layout(1).yaxis, domain:[0, .25], title:{ text:"z", font:{ size:11, color:c.ink3 } } };
+      text:`distance above the ${wlabel(r.w)} trend; bubble line at ${r.crit.toFixed(2)}`, font:{ size:11, color:c.ink2 }, bgcolor:c.paper }] });
+  L.yaxis = { ...L.yaxis, domain:[.32, 1], title:{ text:`price after ${m.ccy} inflation, log scale`, font:{ size:11, color:c.ink3 } } };
+  L.yaxis2 = { ...layout(1).yaxis, domain:[0, .25], title:{ text:"vs trend", font:{ size:11, color:c.ink3 } } };
   L.xaxis = { ...L.xaxis, anchor:"y2", range:[first, x[x.length - 1]], rangeselector:selector([["10y", 10], ["20y", 20]]) };
   draw(el, traces, L);
 }
@@ -511,8 +523,8 @@ function crossChart(el, loaded) {
   const crit = loaded[0][1].crit;
   const L = layout(380, { showlegend:true, margin:{ l:46, r:12, t:34, b:30 }, shapes:[hline(crit, c.ink, "dot")],
     annotations:[{ xref:"paper", x:0, y:crit, xanchor:"left", yanchor:"bottom", showarrow:false,
-      text:`threshold ≈ ${crit.toFixed(2)}`, font:{ size:11, color:c.ink2 }, bgcolor:c.paper, borderpad:2 }] });
-  L.yaxis.title.text = "z";
+      text:`bubble line ≈ ${crit.toFixed(2)}`, font:{ size:11, color:c.ink2 }, bgcolor:c.paper, borderpad:2 }] });
+  L.yaxis.title.text = "distance above trend";
   const starts = loaded.map(([m, r]) => m.months[r.z.findIndex(fin)]).sort();
   L.xaxis.range = [starts[0], loaded[0][0].months.at(-1)];
   draw(el, traces, L);
@@ -524,7 +536,7 @@ function heatChart(el, m) {
   L.yaxis = { ...L.yaxis, showgrid:false, autorange:"reversed", type:"category" };
   draw(el, [{ type:"heatmap", x:m.months, y:ws.map(wlabel), z, showscale:false, ygap:2, zmin:0, zmax:1,
     colorscale:[[0, c.grid], [1, c.red]], customdata:z.map(row => row.map(v => v === 1 ? "bubble" : "not flagged")),
-    hovertemplate:"%{y} window, %{x|%Y-%m}: %{customdata}<extra></extra>" }], L);
+    hovertemplate:"%{y} trend, %{x|%Y-%m}: %{customdata}<extra></extra>" }], L);
 }
 function compChart(el, s) {
   const c = C(), L = layout(120);
@@ -533,21 +545,23 @@ function compChart(el, s) {
 }
 
 // ---------------------------------------------------------------- shared blocks
+// 1-day ES is not shown on main pages: it failed the 2020–26 test (Methodology carries it)
 function riskTable() {
-  const o = R.next.one, row = (k, a) => `<td class="num">${pc(o[k][a].var)}</td><td class="num">${pc(o[k][a].es)}</td>`;
-  return `<div class="tbl"><table><thead><tr><th class="l">Series</th><th>VaR 1%</th><th>ES 1%</th><th>VaR 2.5%</th><th>ES 2.5%</th></tr></thead><tbody>` +
-    ["E", "USD", "F"].map(k => `<tr><td>${SERIES[k]}</td>${row(k, "0.01")}${row(k, "0.025")}</tr>`).join("") + "</tbody></table></div>";
+  const o = R.next.one;
+  return `<div class="tbl"><table><thead><tr><th class="l">Position</th><th>1-in-100 bad day</th><th>1-in-40 bad day</th></tr></thead><tbody>` +
+    ["E", "USD", "F"].map(k => `<tr><td>${SERIES[k]}</td><td class="num">${pc(o[k]["0.01"].var)}</td><td class="num">${pc(o[k]["0.025"].var)}</td></tr>`).join("") +
+    "</tbody></table></div>";
 }
 function tenTable() {
   const t = R.next.ten, ks = ["E", "USD"];
   const body = ks.map(k => {
     const l = R.live10[k];
-    if (!t[k]) return `<tr><td>${SERIES[k]}</td><td colspan="4" class="l"><span class="st alert">Removed by the live kill rule</span></td></tr>`;
-    return `<tr><td>${SERIES[k]}<small>Live: ${l.hits["0.01"]} breaches at 1%, ${l.hits["0.025"]} at 2.5%; ${l.n} of 25 windows</small></td>` +
+    if (!t[k]) return `<tr><td>${SERIES[k]}</td><td colspan="4" class="l"><span class="st alert">Withdrawn: missed too often in live use</span></td></tr>`;
+    return `<tr><td>${SERIES[k]}<small>On trial: ${l.hits["0.01"] + l.hits["0.025"]} misses in ${l.n} of 25 ten-day checks</small></td>` +
       `<td class="num">${pc(t[k]["0.01"].var)}</td><td class="num">${pc(t[k]["0.01"].es)}</td>` +
       `<td class="num">${pc(t[k]["0.025"].var)}</td><td class="num">${pc(t[k]["0.025"].es)}</td></tr>`;
   }).join("");
-  return `<div class="tbl"><table><thead><tr><th class="l">Series</th><th>VaR 1%</th><th>ES 1%</th><th>VaR 2.5%</th><th>ES 2.5%</th></tr></thead><tbody>${body}</tbody></table></div>`;
+  return `<div class="tbl"><table><thead><tr><th class="l">Position</th><th>1 in 100</th><th>Average beyond</th><th>1 in 40</th><th>Average beyond</th></tr></thead><tbody>${body}</tbody></table></div>`;
 }
 function valRows(win) {
   const loaded = [], rows = ORDER.filter(k => V.markets[k]).map(k => {
@@ -558,23 +572,23 @@ function valRows(win) {
     loaded.push([m, r]);
     const z = r.z.at(-1), s = state(z, r.crit), ov = lastFin(m.overlay.v);
     return `<tr class="lnk" data-go="${href(k, win)}"><td><a href="${href(k, win)}">${esc(m.index)}</a>` +
-      `<small>${m.ccy}${m.weak ? ", weak signal" + (m.start ? `, from ${m.start.slice(0, 4)}` : "") : ""}</small></td>` +
-      `<td class="num"><span class="big ${stCls(s)}">${fin(z) ? sign(z) : "—"}</span><small>vs ${r.crit.toFixed(2)}, ${wlabel(r.w)}</small></td>` +
+      `<small>${m.ccy}${m.weak ? ", least reliable" + (m.start ? `, from ${m.start.slice(0, 4)}` : "") : ""}</small></td>` +
+      `<td class="num"><span class="big ${stCls(s)}">${fin(z) ? sign(z) : "—"}</span><small>bubble line ${r.crit.toFixed(2)}, ${wlabel(r.w)} trend</small></td>` +
       `<td class="l">${st(s)}</td>` +
       `<td class="num">${fin(ov) ? sign(ov) : "—"}<small>${fin(ov) ? band(ov) : "not available"}</small></td>` +
       `<td class="num">${monthName(m.months.at(-1))}<small>${m.prov ? "provisional" : "settled"}</small></td></tr>`;
   });
-  return { loaded, html:`<div class="tbl"><table><thead><tr><th class="l">Index</th><th>z</th><th class="l">State</th>` +
-    `<th>Macro overlay</th><th>Data through</th></tr></thead><tbody>${rows.join("")}</tbody></table></div>` };
+  return { loaded, html:`<div class="tbl"><table><thead><tr><th class="l">Index</th><th>Distance above trend</th><th class="l">State</th>` +
+    `<th>Money conditions</th><th>Data through</th></tr></thead><tbody>${rows.join("")}</tbody></table></div>` };
 }
 function winControl(win, m) {
-  return `<div class="ctl"><span class="lab" id="wl">Trend window</span><div class="seg" role="radiogroup" aria-labelledby="wl" id="win">` +
+  const def = m ? `${wlabel(m.window)} (default)` : "Each market's default";
+  return `<label class="ctl"><span class="lab">Trend length</span><select name="w" class="sel">` +
     [null, ...WINDOWS].map(w => {
       const none = !!(w && m && m.windows && !m.windows[w]);
-      return `<label title="${none ? `${esc(m.index)} has too little history for a ${wlabel(w)} window` : ""}">` +
-        `<input type="radio" name="w" value="${w || ""}"${w === win ? " checked" : ""}${none && w !== win ? " disabled" : ""}>` +
-        `<span>${w ? wlabel(w) : "Default"}</span></label>`;
-    }).join("") + "</div></div>";
+      return `<option value="${w || ""}"${w === win ? " selected" : ""}${none ? " disabled" : ""}>` +
+        `${w ? wlabel(w) + (none ? ", too little history" : "") : def}</option>`;
+    }).join("") + "</select></label>";
 }
 
 // ---------------------------------------------------------------- pages
@@ -584,17 +598,20 @@ function keyReadings(win) {
   const rows = [];
   if (R) {
     const n = R.next, p = 100 * n.pct, flagOn = n.flag, near = !flagOn && n.sessions_above > 0;
-    rows.push(cell("stress", "Turkish stress", `${p.toFixed(1)}<small>pct</small>`, flagOn,
-      flagOn ? st("bubble", "Flag on") : near ? st("elevated", "Above threshold") : st("normal", "Flag off"),
-      `${n.sessions_above} of ${R.m} sessions above ${(100 * R.tau).toFixed(1)}`));
+    const prev = 100 * H().pct[Math.max(0, nSess() - 22)];
+    const trend = !fin(prev) ? "" : Math.abs(p - prev) < 5 ? `About where it was a month ago (${prev.toFixed(0)})`
+      : `${p > prev ? "Up" : "Down"} from ${prev.toFixed(0)} a month ago`;
+    rows.push(cell("stress", "Turkish stress", `${p.toFixed(1)}<small>of 100</small>`, flagOn,
+      flagOn ? st("bubble", "Flag on") : near ? st("elevated", `Above ${(100 * R.tau).toFixed(1)} for ${n.sessions_above} of ${R.m} days`) : st("normal", "Flag off"),
+      `${trend}. Flag after ${R.m} days above ${(100 * R.tau).toFixed(1)}`));
     const v = n.one.E["0.01"];
-    rows.push(cell("budget", "Loss budget, next session", pc(v.var), false, st("normal", "1% VaR, XU100 TRY"),
-      `Shortfall ${pc(v.es)}`));
+    rows.push(cell("budget", "Loss budget, next session", pc(v.var), false, `<div class="kt">1-in-100 bad day, XU100 in lira</div>`,
+      `In dollars ${pc(n.one.USD["0.01"].var)}`));
     const i = nSess() - 1, h = H();
     const hitK = ["E", "USD", "F"].filter(k => fin(h[`r_${k}`][i]) && h[`r_${k}`][i] <= h[`var1_${k}`][i]);
     rows.push(cell("breach", `Last session, ${dayName(R.hist.date[i]).replace(/ \d{4}$/, "")}`, pc(h.r_E[i]), hitK.length > 0,
-      hitK.length ? st("bubble", `Breach: ${hitK.map(k => SERIES[k]).join(", ")}`) : st("normal", "Within VaR"),
-      `vs 1% VaR ${pc(h.var1_E[i])}`));
+      hitK.length ? st("bubble", `Fell past the 1-in-100 line: ${hitK.map(k => SERIES[k]).join(", ")}`) : st("normal", "Within the expected range"),
+      `1-in-100 line was ${pc(h.var1_E[i])}`));
   } else {
     rows.push(`<div class="kr"><div class="kq">Turkish risk</div><div class="err-line">Risk readings could not be loaded` +
       `${RERR ? ` (${esc(RERR)})` : ""}.</div></div>`);
@@ -626,18 +643,18 @@ function pageOverview(win) {
   html += R ? exhibit(1, "stress", "Turkish stress gauge, last two years",
     `How tense the Turkish market is compared with its own past, from 0 (calmest) to 100 (most stressed). ` +
     `Red bands are periods when the warning flag was on; triangles mark known crises.`,
-    plot("x-stress", "Stress percentile over the last two years with the 92.5 flag threshold")) : "<div></div>";
+    plot("x-stress", `Turkish stress over the last two years; today ${(100 * R.next.pct).toFixed(1)} of 100, flag ${R.next.flag ? "on" : "off"}`)) : "<div></div>";
   html += "</div>";
   if (R) {
     html += `<div class="row2 gap">` +
       exhibit(2, "budget", "Loss budget for the next session",
-        `How much each position could lose in the next session on a bad day: a 1-in-100 day (1%) and a 1-in-40 day (2.5%). ` +
-        `VaR is that loss; ES is the average loss on days that turn out even worse.`,
+        `How much each position could lose in the next session on a bad day: one that comes about once in 100 sessions, ` +
+        `or once in 40.`,
         riskTable()) +
       exhibit(3, "breach", "XU100 daily moves against the expected worst case, last year",
         `Each bar is one day's actual move. The line is the 1-in-100 loss the model expected the evening before; ` +
         `red dots are days that fell further. The diamond is the estimate for the next session.`,
-        plot("x-breach", "Daily XU100 returns against the 1% VaR line, breaches in red")) + "</div>";
+        plot("x-breach", `Daily XU100 moves against the 1-in-100 line; next session ${pc(R.next.one.E["0.01"].var)}`)) + "</div>";
   }
   if (V) {
     const { loaded, html:t } = valRows(win);
@@ -665,8 +682,8 @@ function pageRisk(sel) {
   const segS = `<div class="ctl"><span class="lab" id="sl">Series</span><div class="seg" role="radiogroup" aria-labelledby="sl" id="ser">` +
     ["E", "USD", "F"].map(s => `<label><input type="radio" name="s" value="${s}"${s === k ? " checked" : ""}><span>${SERIES[s]}</span></label>`).join("") + "</div></div>";
   const per = [["v", "2013–19", "first test period"], ["h", "2020–26", "second test period"], ["l", "Live", `since ${dayName(R.live0)}`]];
-  const btab = `<div class="tbl"><table><thead><tr><th class="l">Period</th><th>Sessions</th><th>1% breaches</th><th>Rate</th>` +
-    `<th>2.5% breaches</th><th>Rate</th></tr></thead><tbody>` + per.map(([c, t, s]) => {
+  const btab = `<div class="tbl"><table><thead><tr><th class="l">Period</th><th>Days</th><th>Past the 1-in-100 line</th><th>Rate<br>expect about 1%</th>` +
+    `<th>Past the 1-in-40 line</th><th>Rate<br>expect about 2.5%</th></tr></thead><tbody>` + per.map(([c, t, s]) => {
       const pr = periodRange(c); if (!pr) return "";
       const a = breaches(k, "0.01", ...pr), b = breaches(k, "0.025", ...pr);
       const rt = x => x.n ? (100 * x.hit / x.n).toFixed(2) + "%" : "—";
@@ -681,13 +698,12 @@ function pageRisk(sel) {
       `How tense the Turkish market is compared with its own past (0 calmest, 100 most stressed). The warning flag turns on ` +
       `after ${R.m} days in a row above ${(100 * R.tau).toFixed(1)}. Triangles mark known crises. ` +
       `Today: <b>${(100 * n.pct).toFixed(1)}</b>, ${n.flag ? "<b>flag on</b>" : "flag off"}.`,
-      plot("r-stress", "Stress percentile since 2013 with events, holdout period marked")) + "</div>" +
+      plot("r-stress", `Turkish stress since 2013 with known crises; today ${(100 * n.pct).toFixed(1)} of 100, flag ${n.flag ? "on" : "off"}`)) + "</div>" +
     `<div class="row2 gap">` +
-    exhibit(2, "r-one", "One-day VaR and ES, next session",
-      `How much each position could lose in the next session on a 1-in-100 or 1-in-40 bad day (VaR), ` +
-      `and the average loss on days that turn out even worse (ES).`, riskTable()) +
-    exhibit(3, "r-ten", "Ten-day VaR and ES, XU100 only",
-      `The same, over the next ${R.horizon10} trading days. Still on trial: it is withdrawn automatically if it misses too often.`,
+    exhibit(2, "r-one", "Loss budget, next session",
+      `How much each position could lose in the next session on a bad day: one that comes about once in 100 sessions, or once in 40.`, riskTable()) +
+    exhibit(3, "r-ten", "Loss budget, next ten days, XU100 only",
+      `The same over the next ${R.horizon10} trading days, plus the average loss on days beyond it. Still on trial: it is withdrawn automatically if it misses too often.`,
       tenTable()) + "</div>" +
     `<section class="section"><div class="page-head"><div><h2>Track record</h2></div>${segS}</div>` +
     exhibit(4, "r-var", `Daily moves against the expected worst case, ${SERIES[k]}`,
@@ -746,8 +762,8 @@ function pageMarket(m, win) {
     return;
   }
   const z = r.z.at(-1), s = state(z, r.crit), ov = lastFin(m.overlay.v);
-  html += `<div class="tbl" style="margin-top:1.8rem"><table><thead><tr><th class="l">State</th><th>z</th><th>Threshold</th><th>Macro overlay</th><th>Data through</th></tr></thead>` +
-    `<tbody><tr><td>${st(s)}</td><td class="num"><span class="big ${stCls(s)}">${fin(z) ? sign(z) : "—"}</span></td><td class="num">${r.crit.toFixed(2)}<small>${wlabel(r.w)} window</small></td>` +
+  html += `<div class="tbl" style="margin-top:1.8rem"><table><thead><tr><th class="l">State</th><th>Distance above trend</th><th>Bubble line</th><th>Money conditions</th><th>Data through</th></tr></thead>` +
+    `<tbody><tr><td>${st(s)}</td><td class="num"><span class="big ${stCls(s)}">${fin(z) ? sign(z) : "—"}</span></td><td class="num">${r.crit.toFixed(2)}<small>${wlabel(r.w)} trend</small></td>` +
     `<td class="num">${fin(ov) ? sign(ov) : "—"}<small>${fin(ov) ? band(ov) : "not available"}</small></td>` +
     `<td class="num">${monthName(m.months.at(-1))}<small>${m.prov ? "provisional" : "settled"}</small></td></tr></tbody></table></div>` +
     `<div class="gap">` + exhibit(1, "v-main", `Real price and its rolling trend`,
@@ -755,18 +771,18 @@ function pageMarket(m, win) {
       `red bands are past bubble periods.`,
       plot("main-chart", `${m.index} log real price against its rolling trend, with z below`)) + "</div>" +
     `<div class="row2 gap">` +
-    exhibit(2, "v-ep", "Past bubble periods", `Each time the index went above its threshold, and how far it fell (after inflation) within the next two years.`,
-      r.episodes.length ? `<div class="tbl"><table><thead><tr><th class="l">Entered</th><th>z at entry</th><th>Months</th><th>Real drawdown</th></tr></thead><tbody>` +
+    exhibit(2, "v-ep", "Past bubble periods", `Each time the index went above its bubble line, and how far it fell (after inflation) within the next two years.`,
+      r.episodes.length ? `<div class="tbl"><table><thead><tr><th class="l">Started</th><th>Distance at start</th><th>Months</th><th>Fall after inflation</th></tr></thead><tbody>` +
         r.episodes.map(e => `<tr${e.open ? ' class="open"' : ""}><td>${e.entered}</td><td class="num">${e.z.toFixed(2)}</td>` +
           `<td class="num">${e.months}${e.running ? "<small>running</small>" : ""}</td>` +
           `<td class="num">${e.dd === null ? "—" : pc(e.dd, 1)}${e.open ? "<small>so far</small>" : ""}</td></tr>`).join("") + "</tbody></table></div>" +
         (r.episodes.some(e => e.open) ? `<p class="tbl-note">Grey rows are too recent to judge.</p>` : "")
       : `<p class="tbl-note">No bubble period at this window: the reading has never crossed its threshold.</p>`) +
     exhibit(3, "v-macro", "Background conditions",
-      `Interest rates, credit growth and the yield curve. Higher means easier money. Shown for context only; it does not change the bubble reading.`,
+      Object.keys(m.comps).length ? `${listAnd(Object.keys(m.comps).map(kk => COMP[kk] || kk))}, shown for context only; they do not change the bubble reading. Higher means easier money.` : "",
       Object.keys(m.comps).length ? Object.entries(m.comps).map(([kk, c]) =>
         `<div class="plot"><div class="t" style="font-size:.8125rem;font-weight:600;color:var(--ink2);margin:.2rem 0">` +
-        `${kk.replace("_", " ")}: <span class="num">${lastFin(c.v).toFixed(2)}</span></div><div id="comp-${kk}"></div></div>`).join("")
+        `${cap(COMP[kk] || kk)}: <span class="num">${lastFin(c.v).toFixed(2)}</span></div><div id="comp-${kk}"></div></div>`).join("")
       : `<p class="tbl-note">No macro components are published for this market in the sources used here.</p>`,
       ) + "</div>" +
     `<div class="gap">` + exhibit(4, "v-heat", "Does the reading depend on the trend length?",
@@ -802,7 +818,24 @@ function render() {
   lastPage = rt.page;
 }
 
+function closeMenus(except) {
+  document.querySelectorAll(".model.open").forEach(m => {
+    if (m !== except) { m.classList.remove("open"); m.firstElementChild.setAttribute("aria-expanded", "false"); }
+  });
+}
+document.addEventListener("keydown", e => {
+  if (e.key !== "Escape") return;
+  const m = document.querySelector(".model.open");
+  if (m) { closeMenus(); m.firstElementChild.focus(); }
+});
+document.addEventListener("focusout", e => {
+  const m = e.target.closest(".model");
+  if (m && !m.contains(e.relatedTarget)) closeMenus();
+});
 document.addEventListener("click", e => {
+  const mb = e.target.closest(".model > button");
+  closeMenus(mb && mb.parentNode);
+  if (mb) { mb.setAttribute("aria-expanded", mb.parentNode.classList.toggle("open")); return; }
   const x = e.target.closest("[data-ex]");
   if (x) {
     e.preventDefault();
@@ -842,7 +875,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     $("#main").innerHTML = `<h1>${NAME}</h1><div class="callout err"><b>No readings could be loaded.</b> Valuation: ${esc(VERR)}. Risk: ${esc(RERR)}. Reload to try again.</div>`;
     return;
   }
-  $("#issue").innerHTML = R ? `As of <b>${dayName(R.asof)}</b>` : `Valuation rebuilt ${esc(V.built)}`;
+  $("#issue").innerHTML = R ? `Daily readings as of <b>${dayName(R.asof)}</b>` : `Valuation rebuilt ${esc(V.built)}`;
   $("#foot").innerHTML = `<span>${NAME}. Statistical readings, not advice or forecasts of returns.</span>` +
     `<span>${R ? `Risk published ${esc(R.built)}` : "Risk unavailable"} · ${V ? `Valuation rebuilt ${esc(V.built)}` : "Valuation unavailable"}</span>`;
   render();
