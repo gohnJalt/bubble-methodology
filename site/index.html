@@ -14,20 +14,20 @@
 <style>
 :root {
   --paper:#F7F7F5; --paper2:#EFEEEB; --ink:#161616; --ink2:#3D3D3B; --ink3:#6A6A67;
-  --hair:#DEDDD9; --rule:#161616; --grid:#EAE9E5; --bar:#CFCEC9;
-  --red:#C4382C; --red-bg:#F6E4E1; --hl:#ECE8DA;
+  --hair:#DEDDD9; --rule:#161616; --grid:#EAE9E5; --bar:#B3B2AC; --band:.35; --band2:.2;
+  --red:#C4382C; --red-bg:#F6E4E1; --hl:#E4DCC0;
   --sans:'Public Sans', ui-sans-serif, system-ui, sans-serif;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --paper:#141414; --paper2:#1D1D1C; --ink:#EDEDEA; --ink2:#C8C8C4; --ink3:#9A9A95;
-    --hair:#2E2E2C; --rule:#EDEDEA; --grid:#222221; --bar:#3A3A38;
+    --hair:#2E2E2C; --rule:#EDEDEA; --grid:#222221; --bar:#3A3A38; --band:.45; --band2:.28;
     --red:#EA6A5E; --red-bg:#35201D; --hl:#34301F;
   }
 }
 :root[data-theme="dark"] {
   --paper:#141414; --paper2:#1D1D1C; --ink:#EDEDEA; --ink2:#C8C8C4; --ink3:#9A9A95;
-  --hair:#2E2E2C; --rule:#EDEDEA; --grid:#222221; --bar:#3A3A38;
+  --hair:#2E2E2C; --rule:#EDEDEA; --grid:#222221; --bar:#3A3A38; --band:.45; --band2:.28;
   --red:#EA6A5E; --red-bg:#35201D; --hl:#34301F;
 }
 * { box-sizing:border-box; }
@@ -113,11 +113,13 @@ a.kr:hover .kq { color:var(--ink); text-decoration:underline; text-underline-off
 
 /* exhibits */
 .ex { margin:0; scroll-margin-top:1.5rem; }
+.ex:focus { outline:none; }
 .ex figcaption { display:block; }
 .ex .t { font-size:.9375rem; font-weight:500; line-height:1.35; }
 .ex .t .n { color:var(--ink3); font-weight:400; font-size:.8125rem; margin-right:.5rem; }
 .ex .sub { font-size:.875rem; line-height:1.5; color:var(--ink3); margin:.25rem 0 0; max-width:62ch; }
 .ex .plot { margin-top:1rem; }
+.ctitle { font-size:.8125rem; font-weight:600; color:var(--ink2); margin:.2rem 0; }
 .ex.flash { animation:flash 1.6s ease-out; }
 @keyframes flash { from { background:var(--hl); box-shadow:0 0 0 .8rem var(--hl); } to { background:transparent; box-shadow:0 0 0 .8rem transparent; } }
 .row2 { display:grid; grid-template-columns:1fr 1fr; gap:4rem; }
@@ -326,14 +328,15 @@ function analogs(rising = false) {
     const last = spells.at(-1);
     if (last && i - last.end <= AN_GAP) { last.end = i; last.days++; } else spells.push({ s:i, end:i, days:1 });
   }
-  if (spells.length && spells.at(-1).end >= N - 1 - AN_GAP) spells.pop();   // the spell we are in now
+  const cur = spells.length && spells.at(-1).end >= N - 1 - AN_GAP ? spells.pop() : null;   // the spell we are in now
+  const curRising = !!cur && cur.s > 0 && h.pct[cur.s - 1] < h.pct[cur.s];
   const rows = spells.filter(sp => sp.days >= AN_MIN).map(({ s, days }) => ({
     date:h.date[s], days, rising:s > 0 && h.pct[s - 1] < h.pct[s],
     E:AN_H.map(n => fwd("E", s, n)), USD:AN_H.map(n => fwd("USD", s, n)),
     flagBefore:!!h.flag[s], flagAfter:h.flag.slice(s, s + 22).some(Boolean), flagPart:s + 21 > N - 1,
   })).filter(r => !rising || r.rising).reverse();
   const done = rows.filter(r => !r.E[1].part);
-  return { lo, hi, rows, rising, n:rows.length, done:done.length, base:baseline(),
+  return { lo, hi, rows, rising, curRising, n:rows.length, done:done.length, base:baseline(),
     medE:done.length ? median(done.map(r => r.E[1].v)) : NaN, medUSD:done.length ? median(done.map(r => r.USD[1].v)) : NaN,
     flagged:done.filter(r => r.flagAfter && !r.flagBefore).length, up:done.filter(r => r.E[1].v > 0).length };
 }
@@ -346,8 +349,9 @@ function analogSummary(a) {
     `up ${b.up.toFixed(0)}% of the time.`;
 }
 function analogBody(a) {
-  return `<label class="chk"><input type="checkbox" name="rise"${a.rising ? " checked" : ""}> Only spells when stress was rising into the zone, as it is now</label>` +
-    `<p class="tbl-note" id="an-sum">${analogSummary(a)}</p>${a.n ? analogTable(a) : ""}`;
+  return `<label class="chk"><input type="checkbox" name="rise"> Only spells when stress rose into the zone` +
+    `${a.curRising ? ", as it did this time" : " (this time it came down into it from above)"}</label>` +
+    `<p class="tbl-note" id="an-sum" aria-live="polite">${analogSummary(a)}</p><div id="an-tbl">${a.n ? analogTable(a) : ""}</div>`;
 }
 function analogTable(a) {
   const cell = m => `<td class="num">${pc(m.v, 1)}${m.part ? "<small>so far</small>" : ""}</td>`;
@@ -443,7 +447,7 @@ function periodMarks(x0) {   // holdout span (seen once) and the live start, on 
       text:"second test period", font:{ size:11, color:c.ink2 }, bgcolor:c.paper, borderpad:2 });
   }
   shapes.push({ type:"line", xref:"x", x0:R.live0, x1:R.live0, yref:"paper", y0:0, y1:1, line:{ color:c.ink3, width:1, dash:"dash" } });
-  anns.push({ xref:"x", x:R.live0, yref:"paper", y:0, xanchor:"right", yanchor:"bottom", showarrow:false,
+  if (anns.length) anns.push({ xref:"x", x:R.live0, yref:"paper", y:0, xanchor:"right", yanchor:"bottom", showarrow:false,
     text:"live", font:{ size:11, color:c.ink2 }, bgcolor:c.paper, borderpad:2 });
   return { shapes, anns };
 }
@@ -493,7 +497,7 @@ function stressChart(el, from, height, opts = {}) {
   const cr = closeRule(R.asof, "last close");
   const shapes = [hline(100 * R.tau, c.ink, "dot"), cr.shape,
     ...flagged.map(([a, b]) => ({ type:"rect", xref:"x", x0:a, x1:b, yref:"paper", y0:0, y1:1, fillcolor:c.red,
-      opacity:.24, line:{ width:0 }, layer:"below" }))];
+      opacity:+css("--band"), line:{ width:0 }, layer:"below" }))];
   const anns = [cr.ann, { xref:"paper", x:0, y:100 * R.tau, xanchor:"left", yanchor:"bottom", showarrow:false,
     text:`flag line ${(100 * R.tau).toFixed(1)}, ${R.m} days in a row`, font:{ size:11, color:c.ink2 }, bgcolor:c.paper, borderpad:2 }];
   const pm = periodMarks(x[0]);
@@ -527,7 +531,7 @@ function varChart(el, k, from, height) {
     { x, y:r, type:"bar", name:"daily move", marker:{ color:c.bar, line:{ width:0 } }, hovertemplate:"%{y:.2f}%" },
     { x:bx, y:by, mode:"markers", name:"fell further", marker:{ color:c.red, size:x.length > 600 ? 5 : 7, line:{ color:c.paper, width:1 } },
       hovertemplate:"fell further %{y:.2f}%<extra></extra>" },
-    { x, y:v, name:"1-in-100 line", line:{ color:c.ink, width:1.2, shape:"hv" }, hovertemplate:"%{y:.2f}%" },
+    { x, y:v, name:"VaR 1% line", line:{ color:c.ink, width:1.2, shape:"hv" }, hovertemplate:"%{y:.2f}%" },
     { x:[nx], y:[f], mode:"markers", name:"next session", marker:{ color:c.ink, size:8, symbol:"diamond" }, hovertemplate:"%{y:.2f}%" },
   ];
   const pm = periodMarks(x[0]);
@@ -587,7 +591,7 @@ function mainChart(el, m, r) {
   const first = x[r.z.findIndex(fin)];
   const shapes = [hline(r.crit, c.ink, "dot", "y2"), hline(0, c.hair, "solid", "y2"),
     ...episodes(x, r.z, r.crit).map(([a, b]) => ({ type:"rect", xref:"x", x0:a, x1:b, yref:"paper", y0:0, y1:1,
-      fillcolor:c.red, opacity:.13, line:{ width:0 }, layer:"below" }))];
+      fillcolor:c.red, opacity:+css("--band2"), line:{ width:0 }, layer:"below" }))];
   const L = layout(560, { showlegend:true, shapes, margin:{ l:46, r:54, t:34, b:30 },
     annotations:[{ xref:"paper", yref:"y2 domain", x:0, y:1, xanchor:"left", yanchor:"bottom", showarrow:false,
       text:`distance above the ${wlabel(r.w)} trend; bubble line at ${r.crit.toFixed(2)}`, font:{ size:11, color:c.ink2 }, bgcolor:c.paper },
@@ -610,14 +614,16 @@ function aboveOnly(x, z, crit) {   // the stretch of a z line above its threshol
 }
 function crossChart(el, loaded) {
   const c = C(), dash = ["solid", "dash", "dot", "dashdot"], cols = [c.ink, c.ink2, c.ink3, c.ink2];
+  const rank = loaded.map(([, r], i) => [r.z.at(-1), i]).sort((a, b) => (fin(b[0]) ? b[0] : -99) - (fin(a[0]) ? a[0] : -99)).map(p => p[1]);
+  const sty = i => rank.indexOf(i);   // highest reading gets the solid ink line
   const traces = loaded.map(([m, r], i) => ({ x:m.months, y:r.z, name:`${m.index}, ${wlabel(r.w)}`, legendgroup:m.key,
-    line:{ width:1.2, color:cols[i % 4], dash:dash[i % 4] }, hovertemplate:"%{y:.2f}" }));
+    line:{ width:sty(i) ? 1.2 : 1.5, color:cols[sty(i)], dash:dash[sty(i)] }, hovertemplate:"%{y:.2f}" }));
   loaded.forEach(([m, r]) => {
     const { X, Y } = aboveOnly(m.months, r.z, r.crit);
     traces.push({ x:X, y:Y, legendgroup:m.key, showlegend:false, hoverinfo:"skip", line:{ width:2.2, color:c.red }, connectgaps:false });
   });
   const crit = loaded[0][1].crit, short = { "Nasdaq Composite":"Nasdaq", "Nikkei 225":"Nikkei", "FTSE 100":"FTSE" };
-  const ends = loaded.map(([m, r], i) => endLabel(m.months, r.z, v => `${short[m.index] || m.index} ${sign(v)}`, "y", cols[i % 4]))
+  const ends = loaded.map(([m, r], i) => endLabel(m.months, r.z, v => `${short[m.index] || m.index} ${sign(v)}`, "y", cols[sty(i)]))
     .filter(Boolean).sort((a, b) => a.y - b.y);
   const all = loaded.flatMap(([, r]) => r.z.filter(fin)), gap = .07 * (Math.max(...all) - Math.min(...all));
   ends.forEach((a, i) => { if (i && a.y - ends[i - 1].y < gap) a.y = ends[i - 1].y + gap; });
@@ -639,7 +645,7 @@ function heatChart(el, m) {
     hovertemplate:"%{y} trend, %{x|%Y-%m}: %{customdata}<extra></extra>" }], L);
 }
 function compChart(el, s) {
-  const c = C(), L = layout(120, { annotations:[endLabel(s.months, s.v, v => v.toFixed(2))] });
+  const c = C(), L = layout(120, { annotations:[endLabel(s.months, s.v, sign)] });
   L.margin = { l:40, r:44, t:6, b:22 };
   draw(el, [{ x:s.months, y:s.v, line:{ color:c.series, width:1.2 }, hovertemplate:"%{y:.2f}" }], L);
 }
@@ -692,6 +698,9 @@ function winControl(win, m) {
 }
 
 // ---------------------------------------------------------------- pages
+// Display rule, not a model rule: the gauge is RISE+ points above its level a month (21 sessions) ago.
+const RISE = 25;
+function rising() { const a = H().pct, v = a.at(-1), m = a[a.length - 22]; return fin(v) && fin(m) && 100 * (v - m) >= RISE; }
 function spark(v) {   // the last month of the stress gauge, 0 to 100, drawn inline
   const pts = v.map((y, i) => `${(i * 60 / (v.length - 1)).toFixed(1)},${(14 - 14 * (fin(y) ? y : 0)).toFixed(1)}`).join(" ");
   return `<svg class="spark" viewBox="-1 -1 62 16" width="62" height="16" aria-hidden="true"><polyline points="${pts}"/></svg>`;
@@ -707,16 +716,17 @@ function keyReadings(win) {
       : `${p > prev ? "Up" : "Down"} from ${prev.toFixed(0)} a month ago`;
     const all = H().pct.filter(fin), rank = 100 * all.filter(v => v < n.pct).length / all.length;
     rows.push(cell("stress", "Turkish stress", `${p.toFixed(1)}<small>of 100</small>`, flagOn,
-      flagOn ? st("bubble", "Flag on") : near ? st("elevated", `Above ${(100 * R.tau).toFixed(1)} for ${n.sessions_above} of ${R.m} days`) : st("normal", "Flag off"),
+      flagOn ? st("bubble", "Flag on") : near ? st("elevated", `Above ${(100 * R.tau).toFixed(1)} for ${n.sessions_above} of ${R.m} days`)
+        : rising() ? st("elevated", "Flag off, rising fast") : st("normal", "Flag off"),
       `Higher than on ${rank.toFixed(0)}% of days since 2013.<br>${spark(H().pct.slice(-22))} ${trend}`));
     const v = n.one.E["0.01"];
-    rows.push(cell("budget", "Loss budget, next session", pc(v.var), false, `<div class="kt">1% VaR, XU100 in lira</div>`,
+    rows.push(cell("budget", "Loss budget, next session", pc(v.var), false, `<div class="kt">VaR 1%, XU100 in lira</div>`,
       `In dollars ${pc(n.one.USD["0.01"].var)}`));
     const i = nSess() - 1, h = H();
     const hitK = ["E", "USD", "F"].filter(k => fin(h[`r_${k}`][i]) && h[`r_${k}`][i] <= h[`var1_${k}`][i]);
     rows.push(cell("breach", `Last session, ${dayName(R.hist.date[i]).replace(/ \d{4}$/, "")}`, pc(h.r_E[i]), hitK.length > 0,
-      hitK.length ? st("bubble", `Fell past the 1-in-100 line: ${hitK.map(k => SERIES[k]).join(", ")}`) : st("normal", "Within the expected range"),
-      `1-in-100 line was ${pc(h.var1_E[i])}`));
+      hitK.length ? st("bubble", `Fell past VaR 1%: ${hitK.map(k => SERIES[k]).join(", ")}`) : st("normal", "Within VaR 1%"),
+      `VaR 1% was ${pc(h.var1_E[i])}`));
   } else {
     rows.push(`<div class="kr"><div class="kq">Turkish risk</div><div class="err-line">Risk readings could not be loaded` +
       `${RERR ? ` (${esc(RERR)})` : ""}.</div></div>`);
@@ -754,10 +764,10 @@ function pageOverview(win) {
         `How much each position could lose in the next session on a bad day: one that comes about once in 100 sessions, ` +
         `or once in 40.`,
         riskTable()) +
-      exhibit(3, "breach", "XU100 daily moves against the expected worst case, past 12 months",
-        `Each bar is one day's actual move. The line is the 1-in-100 loss the model expected the evening before; ` +
+      exhibit(3, "breach", "XU100 daily moves against the VaR 1% line, past 12 months",
+        `Each bar is one day's actual move. The line is VaR 1%, set the evening before: a loss the model expects to be beaten about 1 day in 100; ` +
         `red dots are days that fell further. The diamond is the estimate for the next session.`,
-        plot("x-breach", `Daily XU100 moves against the 1-in-100 line; next session ${pc(R.next.one.E["0.01"].var)}`)) + "</div>";
+        plot("x-breach", `Daily XU100 moves against the VaR 1% line; next session ${pc(R.next.one.E["0.01"].var)}`)) + "</div>";
   }
   if (V) {
     const { loaded, html:t } = valRows(win);
@@ -785,8 +795,8 @@ function pageRisk(sel) {
   const segS = `<div class="ctl"><span class="lab" id="sl">Series</span><div class="seg" role="radiogroup" aria-labelledby="sl" id="ser">` +
     ["E", "USD", "F"].map(s => `<label><input type="radio" name="s" value="${s}"${s === k ? " checked" : ""}><span>${SERIES[s]}</span></label>`).join("") + "</div></div>";
   const per = [["v", "2013–19", "first test period"], ["h", "2020–26", "second test period"], ["l", "Live", `since ${dayName(R.live0)}`]];
-  const btab = `<div class="tbl"><table><thead><tr><th class="l">Period</th><th>Days</th><th>Past the 1-in-100 line</th><th>Rate<br>expect about 1%</th>` +
-    `<th>Past the 1-in-40 line</th><th>Rate<br>expect about 2.5%</th></tr></thead><tbody>` + per.map(([c, t, s]) => {
+  const btab = `<div class="tbl"><table><thead><tr><th class="l">Period</th><th>Days</th><th>Past VaR 1%</th><th>Rate<br>expect about 1%</th>` +
+    `<th>Past VaR 2.5%</th><th>Rate<br>expect about 2.5%</th></tr></thead><tbody>` + per.map(([c, t, s]) => {
       const pr = periodRange(c); if (!pr) return "";
       const a = breaches(k, "0.01", ...pr), b = breaches(k, "0.025", ...pr);
       const rt = x => x.n ? (100 * x.hit / x.n).toFixed(2) + "%" : "—";
@@ -800,7 +810,7 @@ function pageRisk(sel) {
     exhibit(1, "r-stress", "Stress gauge since 2013",
       `How tense the Turkish market is compared with its own past (0 calmest, 100 most stressed). The warning flag turns on ` +
       `after ${R.m} days in a row above ${(100 * R.tau).toFixed(1)}. Triangles mark known crises. ` +
-      `Today: <b>${(100 * n.pct).toFixed(1)}</b>, ${n.flag ? "<b>flag on</b>" : "flag off"}.`,
+      `Today: <b>${(100 * n.pct).toFixed(1)}</b>, ${n.flag ? "<b>flag on</b>" : rising() ? `flag off, <b>rising fast</b> (up ${RISE}+ in a month)` : "flag off"}.`,
       plot("r-stress", `Turkish stress since 2013 with known crises; today ${(100 * n.pct).toFixed(1)} of 100, flag ${n.flag ? "on" : "off"}`)) + "</div>" +
     `<div class="gap">` + exhibit(2, "r-analog", `When stress was here before: ${an.lo.toFixed(0)} to ${an.hi.toFixed(0)}`,
       `Earlier spells of at least ${AN_MIN} days when the gauge sat within ${AN_BAND} points of today's ${(100 * n.pct).toFixed(1)}, ` +
@@ -813,10 +823,10 @@ function pageRisk(sel) {
       `The same over the next ${R.horizon10} trading days, plus the average loss when it turns out worse than that. Still on trial: it is withdrawn automatically if it misses too often.`,
       tenTable()) + "</div>" +
     `<section class="section"><div class="page-head"><div><h2>Track record</h2></div>${segS}</div>` +
-    exhibit(5, "r-var", `Daily moves against the expected worst case, ${SERIES[k]}`,
-      `Every day since 2013: the actual move against the 1-in-100 loss the model expected the evening before. ` +
+    exhibit(5, "r-var", `Daily moves against the VaR 1% line, ${SERIES[k]}`,
+      `Every day since 2013: the actual move against the VaR 1% set the evening before. ` +
       `Red dots are days that fell further. A well-calibrated model is beaten on about 1 day in 100, which the table counts.`,
-      plot("r-var", `Daily moves against the 1-in-100 line for ${SERIES[k]} since 2013; next session ${pc(n.one[k]["0.01"].var)}`) + btab) +
+      plot("r-var", `Daily moves against the VaR 1% line for ${SERIES[k]} since 2013; next session ${pc(n.one[k]["0.01"].var)}`) + btab) +
     "</section>" +
     `<section class="section"><div class="page-head"><div><h2>What drives the risk</h2></div></div><div class="row2">` +
     exhibit(6, "r-jump", "Jump probabilities, past two years",
@@ -828,7 +838,7 @@ function pageRisk(sel) {
     "</div></section>" +
     `<p class="lede coda-link">How the model is built and tested, including what failed: <a href="#/method">Methodology</a>.</p>`;
   $("#main").innerHTML = html;
-  stressChart($("#r-stress"), 0, 380, { periods:true, selector:true, pad:20 });
+  stressChart($("#r-stress"), 0, 380, { selector:true, pad:20 });
   varChart($("#r-var"), k, 0, 340);
   jumpChart($("#r-jump"), Math.max(0, nSess() - 504), 330);
   fxChart($("#r-fx"), Math.max(0, nSess() - 504), 330);
@@ -888,7 +898,7 @@ function pageMarket(m, win) {
     exhibit(3, "v-macro", "Background conditions",
       Object.keys(m.comps).length ? `${listAnd(Object.keys(m.comps).map(kk => COMP[kk] || kk))}, each scored against its own past decade (0 is typical, higher means easier money). Context only; they do not change the bubble reading.` : "",
       Object.keys(m.comps).length ? Object.entries(m.comps).map(([kk, c]) =>
-        `<div class="plot"><div class="t" style="font-size:.8125rem;font-weight:600;color:var(--ink2);margin:.2rem 0">` +
+        `<div class="plot"><div class="ctitle">` +
         `${cap(COMP[kk] || kk)}, score: <span class="num">${sign(lastFin(c.v))}</span></div><div id="comp-${kk}"></div></div>`).join("")
       : `<p class="tbl-note">No macro components are published for this market in the sources used here.</p>`,
       ) + "</div>" +
@@ -909,6 +919,13 @@ function pageMethod() {
   if (vr) vr.innerHTML = validation();
 }
 
+function tidyTables(root) {   // header scopes, and each table named after its exhibit
+  root.querySelectorAll("table").forEach(t => {
+    t.querySelectorAll("thead tr:last-child th").forEach(th => th.scope = "col");
+    const f = t.closest("figure")?.querySelector(".t");
+    if (f && !t.caption) t.createCaption().outerHTML = `<caption class="sr">${esc(f.lastChild.textContent)}</caption>`;
+  });
+}
 // ---------------------------------------------------------------- render
 let lastPage = null;
 function render() {
@@ -921,11 +938,7 @@ function render() {
   else if (m) pageMarket(m, rt.win);
   else pageOverview(rt.win);
   wireSync();
-  $("#main").querySelectorAll("table").forEach(t => {   // header scopes, and each table named after its exhibit
-    t.querySelectorAll("thead tr:last-child th").forEach(th => th.scope = "col");
-    const f = t.closest("figure")?.querySelector(".t");
-    if (f && !t.caption) t.createCaption().outerHTML = `<caption class="sr">${esc(f.lastChild.textContent)}</caption>`;
-  });
+  tidyTables($("#main"));
   document.title = (m ? m.index + " · " : rt.page === "risk" ? "XU100 and lira · " : rt.page === "method" ? "Methodology · " : "") + NAME;
   lastPage = rt.page;
 }
@@ -952,7 +965,10 @@ document.addEventListener("click", e => {
   if (x) {
     e.preventDefault();
     const f = document.getElementById("ex-" + x.dataset.ex);
-    if (f) { f.scrollIntoView({ behavior:"smooth", block:"start" }); f.classList.remove("flash"); void f.offsetWidth; f.classList.add("flash"); }
+    if (f) {
+      f.scrollIntoView({ behavior:"smooth", block:"start" }); f.classList.remove("flash"); void f.offsetWidth; f.classList.add("flash");
+      f.tabIndex = -1; f.focus({ preventScroll:true });
+    }
     return;
   }
   const row = e.target.closest("tr[data-go]");
@@ -962,7 +978,10 @@ document.addEventListener("change", e => {
   const rt = route();
   if (e.target.name === "w") location.hash = href(rt.page, Number(e.target.value) || null);
   if (e.target.name === "s") location.hash = `#/risk?s=${e.target.value}`;
-  if (e.target.name === "rise") { $("#an-body").innerHTML = analogBody(analogs(e.target.checked)); $("[name=rise]").focus(); }
+  if (e.target.name === "rise") {   // swap summary and table only; the checkbox keeps focus
+    const a = analogs(e.target.checked);
+    $("#an-sum").innerHTML = analogSummary(a); $("#an-tbl").innerHTML = a.n ? analogTable(a) : ""; tidyTables($("#an-tbl"));
+  }
 });
 $("#skip").addEventListener("click", e => { e.preventDefault(); $("#main h1")?.focus(); });
 window.addEventListener("hashchange", () => {
