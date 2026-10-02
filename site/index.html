@@ -99,6 +99,8 @@ a.kr:hover .kq { color:var(--ink); text-decoration:underline; text-underline-off
 .kv.alert { color:var(--red); }
 .kn { font-size:.8125rem; color:var(--ink3); margin-top:.3rem; }
 .kt { font-size:.8125rem; font-weight:500; }
+.spark { vertical-align:-3px; margin-right:.3rem; overflow:visible; }
+.spark polyline { fill:none; stroke:var(--ink2); stroke-width:1.2; stroke-linejoin:round; }
 .kr .err-line { font-size:.875rem; color:var(--red); margin-top:.9rem; }
 
 /* state: a drawn circle plus the word; filled red only when a threshold is crossed */
@@ -120,6 +122,9 @@ a.kr:hover .kq { color:var(--ink); text-decoration:underline; text-underline-off
 @keyframes flash { from { background:var(--hl); box-shadow:0 0 0 .8rem var(--hl); } to { background:transparent; box-shadow:0 0 0 .8rem transparent; } }
 .row2 { display:grid; grid-template-columns:1fr 1fr; gap:4rem; }
 .gap { margin-top:5.5rem; }
+.gap.first { margin-top:3rem; }
+.tbl.first { margin-top:1.8rem; }
+.coda-link { margin-top:4rem; }
 .section { margin-top:6rem; padding-top:1.4rem; border-top:1px solid var(--hair); }
 .section > .page-head { margin-bottom:2rem; }
 
@@ -149,6 +154,9 @@ td .big.alert { color:var(--red); }
 td .big.warn { font-weight:500; }
 .tbl-note { font-size:.8125rem; line-height:1.45; color:var(--ink3); margin:.6rem 0 0; }
 .tbl-note b { font-weight:500; color:var(--ink2); }
+.chk { display:inline-flex; gap:.5rem; align-items:center; font-size:.8125rem; color:var(--ink2); margin-top:1rem; cursor:pointer; }
+.chk input { accent-color:var(--ink); margin:0; width:.9rem; height:.9rem; }
+.sr { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
 th.grp { text-align:center; color:var(--ink2); padding-bottom:.2rem; box-shadow:inset 0 -1px 0 var(--hair); }
 details.more { margin-top:.8rem; }
 details.more summary { font-size:.8125rem; color:var(--ink3); cursor:pointer; width:max-content; }
@@ -221,6 +229,13 @@ details.more summary:hover { color:var(--ink); }
   .gap { margin-top:4rem; }
   .section { margin-top:4.5rem; }
 }
+@media (pointer:coarse) {   /* 44px touch targets */
+  nav.lenses > a, .model > button { padding:.75rem 0 .65rem; }
+  .model .menu a { padding:.8rem .8rem; }
+  .seg span { padding:.75rem .6rem; }
+  .sel { padding:.7rem 1.3rem .7rem 0; }
+  details.more summary { padding:.7rem 0; }
+}
 @media (prefers-reduced-motion:reduce) { *, *::before { transition:none !important; animation:none !important; } }
 </style>
 </head>
@@ -252,6 +267,7 @@ const minus = s => s.replace(/^-/, "−");
 const cap = s => s.replace(/^the /, "").replace(/^./, c => c.toUpperCase());
 const listAnd = a => (a.length > 1 ? a.slice(0, -1).join(", ") + " and " + a.at(-1) : a[0] || "").replace(/^./, c => c.toUpperCase());
 const sign = x => (x >= 0 ? "+" : "−") + Math.abs(x).toFixed(2);
+const pct1 = a => { const v = lastFin(a); return fin(v) ? (100 * v).toFixed(1) + "%" : "not available"; };
 const pc = (x, nd = 2) => fin(x) ? minus(x.toFixed(nd)) + "%" : "—";
 const wlabel = w => w >= 12 ? `${w / 12}y` : `${w}m`;
 const monthName = ym => new Date(ym + "-15").toLocaleString("en-GB", { month:"short", year:"numeric" });
@@ -288,8 +304,20 @@ function periodRange(code) {
 }
 // Earlier spells when stress sat within ±5 of today's level, and what XU100 did next.
 // Includes 2020–26 (the holdout, already spent on 2026-09-28): descriptive only, approved 2026-10-02.
-const AN_BAND = 5, AN_GAP = 10, AN_H = [5, 21, 63];   // ±points; sessions merged across; 1w, 1m, 3m
-function analogs() {
+const AN_BAND = 5, AN_GAP = 10, AN_MIN = 3, AN_H = [5, 21, 63];   // ±points; sessions merged across; min days in zone; 1w, 1m, 3m
+const median = a => { const b = [...a].sort((x, y) => x - y), m = b.length >> 1; return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2; };
+function fwd(k, s, n) {   // simple % move over the n sessions after close s; partial if history runs out
+  const h = H(), N = nSess(), e = Math.min(N - 1, s + n); let t = 0;
+  for (let j = s + 1; j <= e; j++) if (fin(h[`r_${k}`][j])) t += h[`r_${k}`][j];
+  return { v:100 * (Math.exp(t / 100) - 1), part:s + n > N - 1 };
+}
+let BASE = null;   // any session since 2013 with a full month after it: the comparison for every spell
+function baseline() {
+  if (BASE && BASE.n === nSess()) return BASE;
+  const ss = [...Array(nSess() - 21).keys()], E = ss.map(s => fwd("E", s, 21).v), U = ss.map(s => fwd("USD", s, 21).v);
+  return BASE = { n:nSess(), medE:median(E), medUSD:median(U), up:100 * E.filter(v => v > 0).length / E.length };
+}
+function analogs(rising = false) {
   const h = H(), N = nSess(), p = 100 * R.next.pct, lo = p - AN_BAND, hi = p + AN_BAND;
   const inZ = h.pct.map(v => fin(v) && 100 * v >= lo && 100 * v <= hi);
   const spells = [];
@@ -299,38 +327,38 @@ function analogs() {
     if (last && i - last.end <= AN_GAP) { last.end = i; last.days++; } else spells.push({ s:i, end:i, days:1 });
   }
   if (spells.length && spells.at(-1).end >= N - 1 - AN_GAP) spells.pop();   // the spell we are in now
-  const move = (k, s, n) => {   // simple % move over the n sessions after close s; partial if history runs out
-    let t = 0; const e = Math.min(N - 1, s + n);
-    for (let j = s + 1; j <= e; j++) if (fin(h[`r_${k}`][j])) t += h[`r_${k}`][j];
-    return { v:100 * (Math.exp(t / 100) - 1), part:s + n > N - 1 };
-  };
-  const rows = spells.map(({ s, days }) => ({
-    date:h.date[s], period:h.period[s], days, rising:s > 0 && h.pct[s - 1] < h.pct[s],
-    E:AN_H.map(n => move("E", s, n)), USD:AN_H.map(n => move("USD", s, n)),
+  const rows = spells.filter(sp => sp.days >= AN_MIN).map(({ s, days }) => ({
+    date:h.date[s], days, rising:s > 0 && h.pct[s - 1] < h.pct[s],
+    E:AN_H.map(n => fwd("E", s, n)), USD:AN_H.map(n => fwd("USD", s, n)),
     flagBefore:!!h.flag[s], flagAfter:h.flag.slice(s, s + 22).some(Boolean), flagPart:s + 21 > N - 1,
-  })).reverse();
-  const done = rows.filter(r => !r.E[1].part), med = a => { const b = [...a].sort((x, y) => x - y), m = b.length >> 1; return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2; };
-  return { lo, hi, rows, n:rows.length, done:done.length,
-    medE:done.length ? med(done.map(r => r.E[1].v)) : NaN, medUSD:done.length ? med(done.map(r => r.USD[1].v)) : NaN,
+  })).filter(r => !rising || r.rising).reverse();
+  const done = rows.filter(r => !r.E[1].part);
+  return { lo, hi, rows, rising, n:rows.length, done:done.length, base:baseline(),
+    medE:done.length ? median(done.map(r => r.E[1].v)) : NaN, medUSD:done.length ? median(done.map(r => r.USD[1].v)) : NaN,
     flagged:done.filter(r => r.flagAfter && !r.flagBefore).length, up:done.filter(r => r.E[1].v > 0).length };
 }
 function analogSummary(a) {
-  if (!a.done) return `Stress has not been between ${a.lo.toFixed(0)} and ${a.hi.toFixed(0)} in any earlier spell since 2013.`;
-  return `Stress was between ${a.lo.toFixed(0)} and ${a.hi.toFixed(0)} in ${a.done} earlier spells since 2013 with a full month after them. ` +
-    `A month later XU100 had moved a median <b>${pc(a.medE, 1)}</b> in lira and <b>${pc(a.medUSD, 1)}</b> in dollars, ` +
-    `up in ${a.up} of ${a.done}; the flag turned on in ${a.flagged} of ${a.done}.`;
+  const b = a.base, kind = a.rising ? `spells of ${AN_MIN}+ days rising into ` : `spells of ${AN_MIN}+ days at `;
+  if (!a.done) return `No earlier ${kind}${a.lo.toFixed(0)} to ${a.hi.toFixed(0)} since 2013 with a full month after them.`;
+  return `In ${a.done} earlier ${kind}${a.lo.toFixed(0)} to ${a.hi.toFixed(0)}, XU100 moved a median <b>${pc(a.medE, 1)}</b> in lira ` +
+    `and <b>${pc(a.medUSD, 1)}</b> in dollars over the next month, up in ${a.up} of ${a.done} (${(100 * a.up / a.done).toFixed(0)}%); ` +
+    `the flag turned on in ${a.flagged}. For comparison, any month since 2013: ${pc(b.medE, 1)} in lira, ${pc(b.medUSD, 1)} in dollars, ` +
+    `up ${b.up.toFixed(0)}% of the time.`;
+}
+function analogBody(a) {
+  return `<label class="chk"><input type="checkbox" name="rise"${a.rising ? " checked" : ""}> Only spells when stress was rising into the zone, as it is now</label>` +
+    `<p class="tbl-note" id="an-sum">${analogSummary(a)}</p>${a.n ? analogTable(a) : ""}`;
 }
 function analogTable(a) {
-  const per = { v:"first test period", h:"second test period", l:"live" };
   const cell = m => `<td class="num">${pc(m.v, 1)}${m.part ? "<small>so far</small>" : ""}</td>`;
-  const row = r => `<tr><td>${dayName(r.date)}<small>${per[r.period] || ""}, ${r.rising ? "rising" : "falling"} into the zone</small></td>` +
+  const row = r => `<tr><td>${dayName(r.date)}<small>${r.rising ? "rising" : "falling"} into the zone</small></td>` +
     `<td class="num">${r.days}</td>${r.E.map(cell).join("")}${r.USD.map(cell).join("")}` +
     `<td class="l">${r.flagBefore ? "already on" : r.flagAfter ? "turned on" : r.flagPart ? "not yet" : "no"}</td></tr>`;
-  const head = `<thead><tr><th></th><th></th><th colspan="3" class="grp">XU100 in lira</th><th colspan="3" class="grp">XU100 in dollars</th><th></th></tr>` +
+  const head = `<thead><tr><td></td><td></td><th colspan="3" scope="colgroup" class="grp">XU100 in lira</th><th colspan="3" scope="colgroup" class="grp">XU100 in dollars</th><td></td></tr>` +
     `<tr><th class="l">Entered the zone</th><th>Days in it</th><th>1 week</th><th>1 month</th><th>3 months</th>` +
     `<th>1 week</th><th>1 month</th><th>3 months</th><th class="l">Flag within a month</th></tr></thead>`;
   const first = a.rows.slice(0, 8), rest = a.rows.slice(8);
-  return `<div class="tbl"><table>${head}<tbody>${first.map(row).join("")}</tbody></table></div>` +
+  return `<div class="tbl"><table><caption class="sr">Earlier stress spells and what XU100 did next</caption>${head}<tbody>${first.map(row).join("")}</tbody></table></div>` +
     (rest.length ? `<details class="more"><summary>Show ${rest.length} earlier spells</summary><div class="tbl"><table>${head}` +
       `<tbody>${rest.map(row).join("")}</tbody></table></div></details>` : "");
 }
@@ -351,7 +379,7 @@ function nav({ page, win }) {
   const short = { "Nasdaq Composite":"Nasdaq" };
   const link = ([k, t]) => `<a href="${href(k, V && V.markets[k] ? win : null)}"${k === page ? ' aria-current="page"' : ""}>${esc(t)}</a>`;
   const model = (name, items) => items.length ? `<div class="model${items.some(([k]) => k === page) ? " on" : ""}">` +
-    `<button type="button" aria-haspopup="true" aria-expanded="false">${name}</button><div class="menu">${items.map(link).join("")}</div></div>` : "";
+    `<button type="button" aria-expanded="false">${name}</button><div class="menu">${items.map(link).join("")}</div></div>` : "";
   const bubbles = ORDER.filter(k => V && V.markets[k]).map(k => [k, short[V.markets[k].index] || V.markets[k].index]);
   $("#nav").innerHTML = link(["", "Overview"]) + model("Regime Models", [["risk", "XU100 and the lira"]]) +
     model("Bubbles", bubbles) + link(["method", "Methodology"]);
@@ -484,7 +512,7 @@ function stressChart(el, from, height, opts = {}) {
 function selector(list) {
   const c = C();
   return { x:1, xanchor:"right", y:1.02, yanchor:"bottom", bgcolor:c.paper, activecolor:c.grid, borderwidth:0,
-    font:{ size:11, color:c.ink2 },
+    font:{ size:matchMedia("(pointer:coarse)").matches ? 15 : 11, color:c.ink2 },
     buttons:[...list.map(([label, count]) => ({ step:"year", count, label })), { step:"all", label:"all" }] };
 }
 function nextDay(d, n) { const t = new Date(d + "T12:00:00Z"); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10); }
@@ -550,11 +578,11 @@ function episodes(months, z, crit) {
 function mainChart(el, m, r) {
   const c = C(), x = m.months, h = "%{y:.2f}";
   const traces = [
-    { x, y:r.trend, name:"trend", line:{ color:c.ink3, width:1 }, hovertemplate:h },
-    { x, y:r.upper, name:"bubble line", line:{ color:c.ink2, width:1, dash:"dot" },
+    { x, y:r.trend, name:"trend", legendrank:3, line:{ color:c.ink3, width:1 }, hovertemplate:h },
+    { x, y:r.upper, name:"bubble line", legendrank:2, line:{ color:c.ink2, width:1, dash:"dot" },
       fill:"tonexty", fillcolor:c.grid, hovertemplate:h },
-    { x, y:m.p, name:"price after inflation", line:{ color:c.ink, width:1.5 }, hovertemplate:h },
-    { x, y:r.z, name:"distance above trend", yaxis:"y2", line:{ color:c.ink2, width:1.1 }, hovertemplate:h },
+    { x, y:m.p, name:"price after inflation", legendrank:1, line:{ color:c.ink, width:1.5 }, hovertemplate:h },
+    { x, y:r.z, name:"distance above trend", legendrank:4, yaxis:"y2", line:{ color:c.ink2, width:1.1 }, hovertemplate:h },
   ];
   const first = x[r.z.findIndex(fin)];
   const shapes = [hline(r.crit, c.ink, "dot", "y2"), hline(0, c.hair, "solid", "y2"),
@@ -564,6 +592,7 @@ function mainChart(el, m, r) {
     annotations:[{ xref:"paper", yref:"y2 domain", x:0, y:1, xanchor:"left", yanchor:"bottom", showarrow:false,
       text:`distance above the ${wlabel(r.w)} trend; bubble line at ${r.crit.toFixed(2)}`, font:{ size:11, color:c.ink2 }, bgcolor:c.paper },
       endLabel(x, r.z, sign, "y2")] });
+  L.legend = { ...L.legend, traceorder:"normal" };
   L.yaxis = { ...L.yaxis, domain:[.32, 1], title:{ text:`price after ${m.ccy} inflation, log scale`, font:{ size:11, color:c.ink3 } } };
   L.yaxis2 = { ...layout(1).yaxis, domain:[0, .25], title:{ text:"vs trend", font:{ size:11, color:c.ink3 } } };
   L.xaxis = { ...L.xaxis, anchor:"y2", range:[first, x[x.length - 1]], rangeselector:selector([["10y", 10], ["20y", 20]]) };
@@ -628,11 +657,11 @@ function tenTable() {
   const body = ks.map(k => {
     const l = R.live10[k];
     if (!t[k]) return `<tr><td>${SERIES[k]}</td><td colspan="4" class="l"><span class="st alert">Withdrawn: missed too often in live use</span></td></tr>`;
-    return `<tr><td>${SERIES[k]}<small>On trial: ${l.hits["0.01"] + l.hits["0.025"]} misses in ${l.n} of 25 ten-day checks</small></td>` +
+    return `<tr><td>${SERIES[k]}<small>On trial: ${l.n ? `${l.hits["0.01"] + l.hits["0.025"]} misses in ${l.n} of 25 ten-day checks` : "no ten-day checks complete yet (0 of 25)"}</small></td>` +
       `<td class="num">${pc(t[k]["0.01"].var)}</td><td class="num">${pc(t[k]["0.01"].es)}</td>` +
       `<td class="num">${pc(t[k]["0.025"].var)}</td><td class="num">${pc(t[k]["0.025"].es)}</td></tr>`;
   }).join("");
-  return `<div class="tbl"><table><thead><tr><th class="l">Position</th><th>VaR 1%</th><th>Average beyond</th><th>VaR 2.5%</th><th>Average beyond</th></tr></thead><tbody>${body}</tbody></table></div>`;
+  return `<div class="tbl"><table><thead><tr><th class="l">Position</th><th>VaR 1%</th><th>Average if worse</th><th>VaR 2.5%</th><th>Average if worse</th></tr></thead><tbody>${body}</tbody></table></div>`;
 }
 function valRows(win) {
   const loaded = [], rows = ORDER.filter(k => V.markets[k]).map(k => {
@@ -663,6 +692,10 @@ function winControl(win, m) {
 }
 
 // ---------------------------------------------------------------- pages
+function spark(v) {   // the last month of the stress gauge, 0 to 100, drawn inline
+  const pts = v.map((y, i) => `${(i * 60 / (v.length - 1)).toFixed(1)},${(14 - 14 * (fin(y) ? y : 0)).toFixed(1)}`).join(" ");
+  return `<svg class="spark" viewBox="-1 -1 62 16" width="62" height="16" aria-hidden="true"><polyline points="${pts}"/></svg>`;
+}
 function keyReadings(win) {
   const cell = (ex, q, v, alert, state, note) => `<a class="kr" href="#/" data-ex="${ex}"><div class="kq">${q}</div>` +
     `<div class="kv num${alert ? " alert" : ""}">${v}</div>${state}<div class="kn">${note}</div></a>`;
@@ -672,9 +705,10 @@ function keyReadings(win) {
     const prev = 100 * H().pct[Math.max(0, nSess() - 22)];
     const trend = !fin(prev) ? "" : Math.abs(p - prev) < 5 ? `About where it was a month ago (${prev.toFixed(0)})`
       : `${p > prev ? "Up" : "Down"} from ${prev.toFixed(0)} a month ago`;
+    const all = H().pct.filter(fin), rank = 100 * all.filter(v => v < n.pct).length / all.length;
     rows.push(cell("stress", "Turkish stress", `${p.toFixed(1)}<small>of 100</small>`, flagOn,
       flagOn ? st("bubble", "Flag on") : near ? st("elevated", `Above ${(100 * R.tau).toFixed(1)} for ${n.sessions_above} of ${R.m} days`) : st("normal", "Flag off"),
-      `${trend}. Flag after ${R.m} days above ${(100 * R.tau).toFixed(1)}`));
+      `Higher than on ${rank.toFixed(0)}% of days since 2013.<br>${spark(H().pct.slice(-22))} ${trend}`));
     const v = n.one.E["0.01"];
     rows.push(cell("budget", "Loss budget, next session", pc(v.var), false, `<div class="kt">1% VaR, XU100 in lira</div>`,
       `In dollars ${pc(n.one.USD["0.01"].var)}`));
@@ -702,9 +736,6 @@ function keyReadings(win) {
   }
   return rows.join("");
 }
-const ord = x => { const n = Math.round(x * 10) / 10, i = Math.floor(n) % 100;
-  const s = (i > 10 && i < 14) || String(n).includes(".") ? "th" : ({ 1:"st", 2:"nd", 3:"rd" })[i % 10] || "th";
-  return `${n.toFixed(1)}${s}`; };
 
 function pageOverview(win) {
   let html = `<h1 tabindex="-1">Where markets stand</h1><p class="lede lede-front">Daily risk for Turkish stocks and the lira, ` +
@@ -734,7 +765,7 @@ function pageOverview(win) {
       exhibit(4, "val", "Real price against its own trend, four indices",
         `Whether each index, after inflation, is trading unusually far above its own long-run trend. ` +
         `Above its bubble line reads as a bubble; close to it, elevated. Click a row for that market.`,
-        t + (loaded.length > 1 ? plot("x-cross", "z-score history for every index on one axis; stretches above threshold in red") : "")) + "</section>";
+        t + (loaded.length > 1 ? plot("x-cross", `Distance above trend for each index; latest ${loaded.map(([m, rr]) => `${m.index} ${sign(rr.z.at(-1))}`).join(", ")}`) : "")) + "</section>";
     $("#main").innerHTML = html;
     if (loaded.length > 1) crossChart($("#x-cross"), loaded);
   } else $("#main").innerHTML = html;
@@ -765,36 +796,37 @@ function pageRisk(sel) {
   const html = `<div class="page-head"><div><h1 tabindex="-1">XU100 and the lira</h1>` +
     `<p class="lede">Turkish stocks and the lira, modelled together so that dollar risk includes the currency. ` +
     `Readings as of ${dayName(R.asof, true)}, for the next session.</p></div></div>` + riskStale() +
-    `<div class="gap" style="margin-top:3rem">` +
+    `<div class="gap first">` +
     exhibit(1, "r-stress", "Stress gauge since 2013",
       `How tense the Turkish market is compared with its own past (0 calmest, 100 most stressed). The warning flag turns on ` +
       `after ${R.m} days in a row above ${(100 * R.tau).toFixed(1)}. Triangles mark known crises. ` +
       `Today: <b>${(100 * n.pct).toFixed(1)}</b>, ${n.flag ? "<b>flag on</b>" : "flag off"}.`,
       plot("r-stress", `Turkish stress since 2013 with known crises; today ${(100 * n.pct).toFixed(1)} of 100, flag ${n.flag ? "on" : "off"}`)) + "</div>" +
     `<div class="gap">` + exhibit(2, "r-analog", `When stress was here before: ${an.lo.toFixed(0)} to ${an.hi.toFixed(0)}`,
-      `Earlier spells when the gauge sat within ${AN_BAND} points of today's ${(100 * n.pct).toFixed(1)}, and how XU100 moved from the day it ` +
-      `entered that zone. ${analogSummary(an)}`, an.n ? analogTable(an) : "") + "</div>" +
+      `Earlier spells of at least ${AN_MIN} days when the gauge sat within ${AN_BAND} points of today's ${(100 * n.pct).toFixed(1)}, ` +
+      `and how XU100 moved from the day it entered that zone. A description of the past, not a forecast.`,
+      `<div id="an-body">${analogBody(an)}</div>`) + "</div>" +
     `<div class="row2 gap">` +
     exhibit(3, "r-one", "Loss budget, next session",
       `How much each position could lose in the next session on a bad day: one that comes about once in 100 sessions, or once in 40.`, riskTable()) +
     exhibit(4, "r-ten", "Loss budget, next ten days, XU100 only",
-      `The same over the next ${R.horizon10} trading days, plus the average loss on days beyond it. Still on trial: it is withdrawn automatically if it misses too often.`,
+      `The same over the next ${R.horizon10} trading days, plus the average loss when it turns out worse than that. Still on trial: it is withdrawn automatically if it misses too often.`,
       tenTable()) + "</div>" +
     `<section class="section"><div class="page-head"><div><h2>Track record</h2></div>${segS}</div>` +
     exhibit(5, "r-var", `Daily moves against the expected worst case, ${SERIES[k]}`,
       `Every day since 2013: the actual move against the 1-in-100 loss the model expected the evening before. ` +
       `Red dots are days that fell further. A well-calibrated model is beaten on about 1 day in 100, which the table counts.`,
-      plot("r-var", `Daily returns against the 1% VaR for ${SERIES[k]}`) + btab) +
+      plot("r-var", `Daily moves against the 1-in-100 line for ${SERIES[k]} since 2013; next session ${pc(n.one[k]["0.01"].var)}`) + btab) +
     "</section>" +
     `<section class="section"><div class="page-head"><div><h2>What drives the risk</h2></div></div><div class="row2">` +
     exhibit(6, "r-jump", "Jump probabilities, past two years",
       `The chance that a day's move was a sudden jump rather than ordinary movement: in stocks alone, the lira alone, or both at once.`,
-      plot("r-jump", "Probabilities of equity, FX and co-jumps per session")) +
+      plot("r-jump", `Chance each day's move was a jump, past two years. Latest: stocks ${pct1(H().pj_E)}, lira ${pct1(H().pj_F)}, both ${pct1(H().pj_C)}`)) +
     exhibit(7, "r-fx", "Lira share of dollar risk",
       `How much of the risk in dollar terms comes from the lira rather than from the stock market. When it rises, dollar losses are mostly a currency story.`,
-      plot("r-fx", "Share of XU100-in-USD variance due to USDTRY")) +
+      plot("r-fx", `Lira share of dollar risk, past two years. Latest ${pct1(H().fx_share)}`)) +
     "</div></section>" +
-    `<p class="lede" style="margin-top:4rem">How the model is built and tested, including what failed: <a href="#/method">Methodology</a>.</p>`;
+    `<p class="lede coda-link">How the model is built and tested, including what failed: <a href="#/method">Methodology</a>.</p>`;
   $("#main").innerHTML = html;
   stressChart($("#r-stress"), 0, 380, { periods:true, selector:true, pad:20 });
   varChart($("#r-var"), k, 0, 340);
@@ -837,27 +869,27 @@ function pageMarket(m, win) {
     return;
   }
   const z = r.z.at(-1), s = state(z, r.crit), ov = lastFin(m.overlay.v);
-  html += `<div class="tbl" style="margin-top:1.8rem"><table><thead><tr><th class="l">State</th><th>Distance above trend</th><th>Bubble line</th><th>Money conditions</th><th>Data through</th></tr></thead>` +
+  html += `<div class="tbl first">`+`<table><thead><tr><th class="l">State</th><th>Distance above trend</th><th>Bubble line</th><th>Money conditions</th><th>Data through</th></tr></thead>` +
     `<tbody><tr><td>${st(s)}</td><td class="num"><span class="big ${stCls(s)}">${fin(z) ? sign(z) : "—"}</span></td><td class="num">${r.crit.toFixed(2)}<small>${wlabel(r.w)} trend</small></td>` +
     `<td class="num">${fin(ov) ? sign(ov) : "—"}<small>${fin(ov) ? band(ov) : "not available"}</small></td>` +
     `<td class="num">${monthName(m.months.at(-1))}<small>${m.prov ? "provisional" : "settled"}</small></td></tr></tbody></table></div>` +
     `<div class="gap">` + exhibit(1, "v-main", `Real price and its rolling trend`,
       `The index after inflation (dark line) against its own trend (grey). The lower panel shows how far above trend it is; ` +
       `red bands are past bubble periods.`,
-      plot("main-chart", `${m.index} log real price against its rolling trend, with z below`)) + "</div>" +
+      plot("main-chart", `${m.index} price after inflation against its trend; distance above trend now ${fin(z) ? sign(z) : "not available"}`)) + "</div>" +
     `<div class="row2 gap">` +
     exhibit(2, "v-ep", "Past bubble periods", `Each time the index went above its bubble line, and how far it fell (after inflation) within the next two years.`,
       r.episodes.length ? `<div class="tbl"><table><thead><tr><th class="l">Started</th><th>Distance at start</th><th>Months</th><th>Fall after inflation</th></tr></thead><tbody>` +
-        r.episodes.map(e => `<tr${e.open ? ' class="open"' : ""}><td>${e.entered}</td><td class="num">${e.z.toFixed(2)}</td>` +
+        r.episodes.map(e => `<tr${e.open ? ' class="open"' : ""}><td>${monthName(e.entered)}</td><td class="num">${e.z.toFixed(2)}</td>` +
           `<td class="num">${e.months}${e.running ? "<small>running</small>" : ""}</td>` +
           `<td class="num">${e.dd === null ? "—" : pc(e.dd, 1)}${e.open ? "<small>so far</small>" : ""}</td></tr>`).join("") + "</tbody></table></div>" +
         (r.episodes.some(e => e.open) ? `<p class="tbl-note">Grey rows are too recent to judge.</p>` : "")
       : `<p class="tbl-note">No bubble period at this window: the reading has never crossed its threshold.</p>`) +
     exhibit(3, "v-macro", "Background conditions",
-      Object.keys(m.comps).length ? `${listAnd(Object.keys(m.comps).map(kk => COMP[kk] || kk))}, shown for context only; they do not change the bubble reading. Higher means easier money.` : "",
+      Object.keys(m.comps).length ? `${listAnd(Object.keys(m.comps).map(kk => COMP[kk] || kk))}, each scored against its own past decade (0 is typical, higher means easier money). Context only; they do not change the bubble reading.` : "",
       Object.keys(m.comps).length ? Object.entries(m.comps).map(([kk, c]) =>
         `<div class="plot"><div class="t" style="font-size:.8125rem;font-weight:600;color:var(--ink2);margin:.2rem 0">` +
-        `${cap(COMP[kk] || kk)}: <span class="num">${lastFin(c.v).toFixed(2)}</span></div><div id="comp-${kk}"></div></div>`).join("")
+        `${cap(COMP[kk] || kk)}, score: <span class="num">${sign(lastFin(c.v))}</span></div><div id="comp-${kk}"></div></div>`).join("")
       : `<p class="tbl-note">No macro components are published for this market in the sources used here.</p>`,
       ) + "</div>" +
     `<div class="gap">` + exhibit(4, "v-heat", "Does the reading depend on the trend length?",
@@ -889,6 +921,11 @@ function render() {
   else if (m) pageMarket(m, rt.win);
   else pageOverview(rt.win);
   wireSync();
+  $("#main").querySelectorAll("table").forEach(t => {   // header scopes, and each table named after its exhibit
+    t.querySelectorAll("thead tr:last-child th").forEach(th => th.scope = "col");
+    const f = t.closest("figure")?.querySelector(".t");
+    if (f && !t.caption) t.createCaption().outerHTML = `<caption class="sr">${esc(f.lastChild.textContent)}</caption>`;
+  });
   document.title = (m ? m.index + " · " : rt.page === "risk" ? "XU100 and lira · " : rt.page === "method" ? "Methodology · " : "") + NAME;
   lastPage = rt.page;
 }
@@ -925,14 +962,17 @@ document.addEventListener("change", e => {
   const rt = route();
   if (e.target.name === "w") location.hash = href(rt.page, Number(e.target.value) || null);
   if (e.target.name === "s") location.hash = `#/risk?s=${e.target.value}`;
+  if (e.target.name === "rise") { $("#an-body").innerHTML = analogBody(analogs(e.target.checked)); $("[name=rise]").focus(); }
 });
 $("#skip").addEventListener("click", e => { e.preventDefault(); $("#main h1")?.focus(); });
 window.addEventListener("hashchange", () => {
-  const moved = route().page !== lastPage;
-  const y = window.scrollY;
+  const moved = route().page !== lastPage, y = window.scrollY, ctl = document.activeElement?.name;
   render();
   if (moved) { window.scrollTo(0, 0); $("#main h1")?.focus({ preventScroll:true }); }
-  else window.scrollTo(0, y);
+  else {   // same page re-rendered by a control: put focus back on it
+    window.scrollTo(0, y);
+    if (ctl) $(`[name="${ctl}"]:checked, select[name="${ctl}"]`)?.focus({ preventScroll:true });
+  }
 });
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { const y = scrollY; render(); scrollTo(0, y); });
 
