@@ -334,9 +334,11 @@ function analogs(rising = false) {
     date:h.date[s], days, rising:s > 0 && h.pct[s - 1] < h.pct[s],
     E:AN_H.map(n => fwd("E", s, n)), USD:AN_H.map(n => fwd("USD", s, n)),
     flagBefore:!!h.flag[s], flagAfter:h.flag.slice(s, s + 22).some(Boolean), flagPart:s + 21 > N - 1,
-  })).filter(r => !rising || r.rising).sort((a, b) => a.E[1].part - b.E[1].part || a.E[1].v - b.E[1].v);   // worst lira month first; unfinished months last
+  })).filter(r => !rising || r.rising);
+  const byRet = p > 50;   // stressed: worst lira month first, unfinished months last; calm: most recent first
+  if (byRet) rows.sort((a, b) => a.E[1].part - b.E[1].part || a.E[1].v - b.E[1].v); else rows.reverse();
   const done = rows.filter(r => !r.E[1].part);
-  return { lo, hi, rows, rising, curRising, n:rows.length, done:done.length, base:baseline(),
+  return { lo, hi, rows, rising, byRet, curRising, n:rows.length, done:done.length, base:baseline(),
     medE:done.length ? median(done.map(r => r.E[1].v)) : NaN, medUSD:done.length ? median(done.map(r => r.USD[1].v)) : NaN,
     flagged:done.filter(r => r.flagAfter && !r.flagBefore).length, up:done.filter(r => r.E[1].v > 0).length };
 }
@@ -359,11 +361,11 @@ function analogTable(a) {
     `<td class="num">${r.days}</td>${r.E.map(cell).join("")}${r.USD.map(cell).join("")}` +
     `<td class="l">${r.flagBefore ? "already on" : r.flagAfter ? "turned on" : r.flagPart ? "not yet" : "no"}</td></tr>`;
   const head = `<thead><tr><td></td><td></td><th colspan="3" scope="colgroup" class="grp">XU100 in lira</th><th colspan="3" scope="colgroup" class="grp">XU100 in dollars</th><td></td></tr>` +
-    `<tr><th class="l">Entered the zone</th><th>Days in it</th><th>1 week</th><th aria-sort="ascending">1 month</th><th>3 months</th>` +
+    `<tr><th class="l"${a.byRet ? "" : ' aria-sort="descending"'}>Entered the zone</th><th>Days in it</th><th>1 week</th><th${a.byRet ? ' aria-sort="ascending"' : ""}>1 month</th><th>3 months</th>` +
     `<th>1 week</th><th>1 month</th><th>3 months</th><th class="l">Flag within a month</th></tr></thead>`;
   const first = a.rows.slice(0, 8), rest = a.rows.slice(8);
   return `<div class="tbl"><table><caption class="sr">Earlier stress spells and what XU100 did next</caption>${head}<tbody>${first.map(row).join("")}</tbody></table></div>` +
-    (rest.length ? `<details class="more"><summary>Show ${rest.length} more spells</summary><div class="tbl"><table>${head}` +
+    (rest.length ? `<details class="more"><summary>Show ${rest.length} ${a.byRet ? "more" : "earlier"} spells</summary><div class="tbl"><table>${head}` +
       `<tbody>${rest.map(row).join("")}</tbody></table></div></details>` : "");
 }
 function riskAge() {   // calendar days since the last session in risk.json
@@ -814,7 +816,7 @@ function pageRisk(sel) {
       plot("r-stress", `Turkish stress since 2013 with known crises; today ${(100 * n.pct).toFixed(1)} of 100, flag ${n.flag ? "on" : "off"}`)) + "</div>" +
     `<div class="gap">` + exhibit(2, "r-analog", `When stress was here before: ${an.lo.toFixed(0)} to ${an.hi.toFixed(0)}`,
       `Earlier spells of at least ${AN_MIN} days when the gauge sat within ${AN_BAND} points of today's ${(100 * n.pct).toFixed(1)}, ` +
-      `and how XU100 moved from the day it entered that zone, worst month in lira first. A description of the past, not a forecast.`,
+      `and how XU100 moved from the day it entered that zone, ${an.byRet ? "worst month in lira first" : "most recent first"}. A description of the past, not a forecast.`,
       `<div id="an-body">${analogBody(an)}</div>`) + "</div>" +
     `<div class="row2 gap">` +
     exhibit(3, "r-one", "Loss budget, next session",
